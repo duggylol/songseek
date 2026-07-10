@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SongSeek</title>
+    <script>
+      window.__ytReady = new Promise((res) => { window.onYouTubeIframeAPIReady = res })
+    </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://w.soundcloud.com/player/api.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/renderer/main.jsx"></script>
+  </body>
+</html>

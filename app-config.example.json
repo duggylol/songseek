@@ -1,0 +1,10 @@
+{
+  "_readme": "Copy this file to app-config.json and fill it in before building installers. These credentials are baked into your builds so end users never create developer apps.",
+
+  "_spotify": "Create an app at https://developer.spotify.com/dashboard (any redirect URI, e.g. http://127.0.0.1:8888, APIs: Web API). Used only for catalog search via Client-Credentials — no user login, no allowlist.",
+  "spotifyClientId": "",
+  "spotifyClientSecret": "",
+
+  "_twitch": "Register a PUBLIC app at https://dev.twitch.tv/console/apps with OAuth Redirect URL exactly http://localhost:43111 . Enables one-click Twitch login.",
+  "twitchClientId": ""
+}

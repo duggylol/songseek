@@ -1,0 +1,54 @@
+appId: gg.songseek.app
+productName: SongSeek
+
+# Auto-updates are pulled from this repo's GitHub Releases (electron-updater).
+publish:
+  provider: github
+  owner: duggylol
+  repo: songseek
+
+# Use the castlabs Widevine-enabled Electron build for packaging.
+electronVersion: 42.5.2+wvcus
+electronDownload:
+  mirror: https://github.com/castlabs/electron-releases/releases/download/
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**
+  - src/main/**
+  - app-config.json
+  - package.json
+
+# Bundle the go-librespot binaries (Spotify playback engine). The app picks the
+# matching platform-arch folder at runtime.
+extraResources:
+  - from: resources/bin
+    to: bin
+
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+# Step-by-step install wizard (welcome → install location → progress → launch).
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: SongSeek
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  artifactName: SongSeek-Setup-${version}.${ext}
+
+mac:
+  target:
+    - target: dmg
+  category: public.app-category.music
+  # No Apple Developer cert needed for local testing (unsigned build).
+  identity: null

@@ -1,0 +1,32 @@
+{
+  "name": "songseek",
+  "productName": "SongSeek",
+  "version": "0.1.1",
+  "description": "Twitch song-request jukebox for Spotify, YouTube & SoundCloud",
+  "main": "src/main/main.js",
+  "author": "augustin",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV=1 electron .\"",
+    "build:renderer": "vite build",
+    "dist:mac": "npm run build:renderer && electron-builder --mac",
+    "dist:win": "npm run build:renderer && electron-builder --win",
+    "dist": "npm run build:renderer && electron-builder -mw"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "github:castlabs/electron-releases#v42.5.2+wvcus",
+    "electron-builder": "^26.0.12",
+    "framer-motion": "^11.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1",
+    "zustand": "^5.0.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}
