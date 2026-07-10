@@ -185,6 +185,7 @@ function registerIpc() {
   ipcMain.handle('twitch:status', () => twitchStatus())
   ipcMain.handle('twitch:say', (_e, text) => (twitch ? twitch.say(text) : false))
 
+  ipcMain.handle('resolve:youtubeStream', (_e, id) => require('./ytdlp').resolveStream(id))
   ipcMain.handle('search:youtube', (_e, q) => search.youtubeSearch(q))
   ipcMain.handle('search:soundcloud', (_e, q) => search.soundcloudSearch(q))
   ipcMain.handle('resolve:youtube', (_e, id) => search.youtubeResolve(id))

@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('songseek', {
     soundcloud: (q) => ipcRenderer.invoke('search:soundcloud', q),
     resolveSpotify: (id) => ipcRenderer.invoke('resolve:spotify', id),
     resolveYoutube: (id) => ipcRenderer.invoke('resolve:youtube', id),
+    resolveYoutubeStream: (id) => ipcRenderer.invoke('resolve:youtubeStream', id),
     resolveSoundcloud: (url) => ipcRenderer.invoke('resolve:soundcloud', url),
   },
   win: {

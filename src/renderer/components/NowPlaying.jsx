@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../state/store'
-import { attachYouTube, togglePlay, next, prev, seek, setVolume } from '../players/controller'
+import { togglePlay, next, prev, seek, setVolume } from '../players/controller'
 import { fmtTime, SOURCE_META } from '../utils'
 
 function ProgressBar() {
@@ -127,20 +127,14 @@ function Controls() {
 
 export default function NowPlaying() {
   const current = useApp((s) => s.current)
-  const ytRef = useRef(null)
 
-  useEffect(() => {
-    attachYouTube(ytRef.current)
-  }, [])
-
-  const isYt = current && current.source === 'youtube'
   const meta = current && SOURCE_META[current.source]
 
   return (
     <div className="now-playing">
       <div className="artwork">
         <AnimatePresence mode="popLayout">
-          {current && !isYt && current.artwork && (
+          {current && current.artwork && (
             <motion.img
               key={current.id}
               src={current.artwork}
@@ -168,7 +162,6 @@ export default function NowPlaying() {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className={`yt-slot ${isYt ? 'visible' : ''}`} ref={ytRef} />
       </div>
 
       <div className="track-info">

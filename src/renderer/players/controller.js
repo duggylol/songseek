@@ -13,7 +13,7 @@ import {
 //  - soundcloud: hidden widget iframe (audio only)
 const P = {
   spotify: { lastPos: 0, lastAt: 0, playing: false },
-  youtube: { player: null, ready: false, pendingId: null },
+  youtube: { audio: null, token: 0 },
   soundcloud: { widget: null, iframe: null, playing: false },
   active: null,
   volume: 0.8,
@@ -104,12 +104,7 @@ export async function playTrack(track) {
       await resumeSpotifyAudio()
       await window.songseek.spotify.play(track.uri)
     } else if (track.source === 'youtube') {
-      if (P.youtube.ready) {
-        P.youtube.player.loadVideoById(track.sourceId)
-        P.youtube.player.playVideo()
-      } else {
-        P.youtube.pendingId = track.sourceId
-      }
+      await playYouTube(track)
     } else if (track.source === 'soundcloud') {
       playSoundcloud(track)
     }
@@ -124,8 +119,8 @@ function pauseAllExcept(source) {
     setSpotifyPlaying(false)
     window.songseek.spotify.pause()
   }
-  if (source !== 'youtube' && P.youtube.ready) {
-    try { P.youtube.player.stopVideo() } catch {}
+  if (source !== 'youtube' && P.youtube.audio) {
+    try { P.youtube.audio.pause() } catch {}
   }
   if (source !== 'soundcloud' && P.soundcloud.widget) {
     try { P.soundcloud.widget.pause() } catch {}
@@ -161,8 +156,8 @@ export function togglePlay() {
       P.spotify.lastAt = Date.now()
     }
   }
-  if (P.active === 'youtube' && P.youtube.ready) {
-    playing ? P.youtube.player.pauseVideo() : P.youtube.player.playVideo()
+  if (P.active === 'youtube' && P.youtube.audio) {
+    playing ? P.youtube.audio.pause() : P.youtube.audio.play().catch(() => {})
   }
   if (P.active === 'soundcloud' && P.soundcloud.widget) P.soundcloud.widget.toggle()
 }
@@ -174,7 +169,7 @@ export function seek(ms) {
     P.spotify.lastPos = ms
     P.spotify.lastAt = Date.now()
   }
-  if (P.active === 'youtube' && P.youtube.ready) P.youtube.player.seekTo(ms / 1000, true)
+  if (P.active === 'youtube' && P.youtube.audio) { try { P.youtube.audio.currentTime = ms / 1000 } catch {} }
   if (P.active === 'soundcloud' && P.soundcloud.widget) P.soundcloud.widget.seekTo(ms)
   app().setPlayback({ positionMs: ms })
 }
@@ -182,7 +177,7 @@ export function seek(ms) {
 export function setVolume(v) {
   P.volume = v
   setSpotifyVolume(v)
-  try { P.youtube.ready && P.youtube.player.setVolume(v * 100) } catch {}
+  try { if (P.youtube.audio) P.youtube.audio.volume = v } catch {}
   try { P.soundcloud.widget && P.soundcloud.widget.setVolume(v * 100) } catch {}
 }
 
@@ -210,55 +205,48 @@ export function initPlayers(volume) {
   setInterval(poll, 250)
 }
 
-// Mounts the YouTube player into the artwork slot (called once from NowPlaying).
-export async function attachYouTube(container) {
-  if (P.youtube.player || !container) return
-  P.youtube.player = true // reserve
-  await window.__ytReady
-  const inner = document.createElement('div')
-  container.appendChild(inner)
-  P.youtube.player = new window.YT.Player(inner, {
-    width: '100%',
-    height: '100%',
-    playerVars: {
-      controls: 0,
-      disablekb: 1,
-      rel: 0,
-      iv_load_policy: 3,
-      playsinline: 1,
-      ...(location.protocol.startsWith('http') ? { origin: location.origin } : {}),
-    },
-    events: {
-      onReady: () => {
-        P.youtube.ready = true
-        P.youtube.player.setVolume(P.volume * 100)
-        if (P.youtube.pendingId) {
-          const id = P.youtube.pendingId
-          P.youtube.pendingId = null
-          P.youtube.player.loadVideoById(id)
-        }
-      },
-      onStateChange: (e) => {
-        if (P.active !== 'youtube') return
-        if (e.data === 0) ended()
-        else if (e.data === 1) app().setPlayback({ playing: true })
-        else if (e.data === 2) app().setPlayback({ playing: false })
-      },
-      onError: (e) => {
-        if (P.active !== 'youtube') return
-        const code = e && e.data
-        const msg =
-          code === 101 || code === 150
-            ? "This video's owner doesn't allow playback outside YouTube — skipping"
-            : code === 100
-              ? 'YouTube video is private or deleted — skipping'
-              : `YouTube playback error (${code}) — skipping`
-        app().toast(msg, 'error')
-        ended()
-      },
-    },
+// YouTube plays as a direct audio stream (resolved by yt-dlp in the main process),
+// so embedding-disabled music videos — which the old IFrame player refused — work.
+function ensureYtAudio() {
+  if (P.youtube.audio) return P.youtube.audio
+  const el = new Audio()
+  el.preload = 'auto'
+  el.volume = P.volume
+  el.addEventListener('ended', () => { if (P.active === 'youtube') ended() })
+  el.addEventListener('playing', () => { if (P.active === 'youtube') app().setPlayback({ playing: true }) })
+  el.addEventListener('pause', () => { if (P.active === 'youtube' && !el.ended) app().setPlayback({ playing: false }) })
+  el.addEventListener('error', () => {
+    if (P.active === 'youtube' && P.youtube.audio === el && el.src) {
+      app().toast('YouTube audio failed — skipping', 'error')
+      ended()
+    }
   })
+  P.youtube.audio = el
+  return el
 }
+
+async function playYouTube(track) {
+  const el = ensureYtAudio()
+  const token = ++P.youtube.token
+  el.pause()
+  try {
+    const info = await window.songseek.search.resolveYoutubeStream(track.sourceId)
+    if (token !== P.youtube.token || P.active !== 'youtube') return // superseded
+    if (track.durationMs !== info.durationMs && info.durationMs) {
+      app().setPlayback({ durationMs: info.durationMs })
+    }
+    el.src = info.streamUrl
+    el.volume = P.volume
+    await el.play()
+  } catch (e) {
+    if (token !== P.youtube.token) return
+    app().toast(`Couldn't load "${track.title}" from YouTube — skipping`, 'error')
+    ended()
+  }
+}
+
+// No-op kept for NowPlaying, which still calls it; YouTube no longer needs a mount.
+export async function attachYouTube() {}
 
 function ensureScIframe() {
   if (P.soundcloud.iframe) return P.soundcloud.iframe
@@ -323,15 +311,13 @@ function poll() {
     const pos = P.spotify.lastPos + (Date.now() - P.spotify.lastAt)
     const dur = app().playback.durationMs
     setPlayback({ positionMs: dur ? Math.min(pos, dur) : pos, playing: true })
-  } else if (P.active === 'youtube' && P.youtube.ready) {
-    try {
-      const p = P.youtube.player
-      setPlayback({
-        playing: p.getPlayerState() === 1,
-        positionMs: (p.getCurrentTime() || 0) * 1000,
-        durationMs: (p.getDuration() || 0) * 1000,
-      })
-    } catch {}
+  } else if (P.active === 'youtube' && P.youtube.audio) {
+    const a = P.youtube.audio
+    setPlayback({
+      playing: !a.paused,
+      positionMs: (a.currentTime || 0) * 1000,
+      durationMs: a.duration && isFinite(a.duration) ? a.duration * 1000 : app().playback.durationMs,
+    })
   } else if (P.active === 'soundcloud' && P.soundcloud.widget) {
     try {
       P.soundcloud.widget.getPosition((pos) => {
