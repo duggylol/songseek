@@ -7,6 +7,7 @@ const spotifyAuth = require('./spotifyAuth')
 const twitchAuth = require('./twitchAuth')
 const TwitchService = require('./twitch')
 const { SpotifyPlayer } = require('./spotifyPlayer')
+const spotifyLibrary = require('./spotifyLibrary')
 const search = require('./searchProxy')
 
 let store = null
@@ -184,6 +185,15 @@ function registerIpc() {
   })
   ipcMain.handle('twitch:status', () => twitchStatus())
   ipcMain.handle('twitch:say', (_e, text) => (twitch ? twitch.say(text) : false))
+
+  ipcMain.handle('library:connect', () => spotifyLibrary.connect(store))
+  ipcMain.handle('library:disconnect', () => {
+    spotifyLibrary.disconnect(store)
+    return spotifyLibrary.status(store)
+  })
+  ipcMain.handle('library:status', () => spotifyLibrary.status(store))
+  ipcMain.handle('library:playlists', () => spotifyLibrary.playlists(store))
+  ipcMain.handle('library:tracks', (_e, id) => spotifyLibrary.playlistTracks(store, id))
 
   ipcMain.handle('resolve:youtubeStream', (_e, id) => require('./ytdlp').resolveStream(id))
   ipcMain.handle('search:youtube', (_e, q) => search.youtubeSearch(q))

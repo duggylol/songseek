@@ -30,41 +30,72 @@ function ended() {
 }
 
 // ---------- queue orchestration ----------
+//
+// Two tiers of playback:
+//   1. requests (s.queue) — viewer/manual song requests, always take priority
+//   2. playlist (s.playlist) — the user's own music, plays as a backdrop and
+//      resumes automatically once the request queue drains.
+// A viewer request never interrupts the current song; it waits its turn, and
+// after the last request we return to the playlist where it left off.
 
 export function next() {
   const s = app()
-  const [head, ...rest] = s.queue
   if (s.current) s.setHistory([...s.history.slice(-49), s.current])
-  if (!head) {
-    s.setCurrent(null)
-    stopAll()
+
+  // 1) A queued request always wins.
+  if (s.queue.length) {
+    const [head, ...rest] = s.queue
+    s.setQueue(rest)
+    s.setCurrent(head, 'request')
+    playTrack(head)
     return
   }
-  s.setQueue(rest)
-  s.setCurrent(head)
-  playTrack(head)
+
+  // 2) Otherwise continue the user's playlist (looping so music never dies).
+  const pl = s.playlist
+  if (pl && pl.tracks.length) {
+    const nextIndex = pl.index + 1
+    if (nextIndex >= pl.tracks.length && !pl.loop) {
+      s.setCurrent(null, null)
+      stopAll()
+      return
+    }
+    const index = ((nextIndex % pl.tracks.length) + pl.tracks.length) % pl.tracks.length
+    s.setPlaylist({ ...pl, index })
+    s.setCurrent(pl.tracks[index], 'playlist')
+    playTrack(pl.tracks[index])
+    return
+  }
+
+  s.setCurrent(null, null)
+  stopAll()
 }
 
 export function prev() {
   const s = app()
-  if (s.playback.positionMs > 5000 || !s.history.length) {
-    seek(0)
+  if (s.playback.positionMs > 5000) return seek(0)
+  // Step back through the playlist when that's what's playing.
+  if (s.currentSource === 'playlist' && s.playlist && s.playlist.tracks.length) {
+    const pl = s.playlist
+    const index = (pl.index - 1 + pl.tracks.length) % pl.tracks.length
+    s.setPlaylist({ ...pl, index })
+    s.setCurrent(pl.tracks[index], 'playlist')
+    playTrack(pl.tracks[index])
     return
   }
-  const prevTrack = s.history[s.history.length - 1]
-  s.setHistory(s.history.slice(0, -1))
-  if (s.current) s.setQueue([s.current, ...s.queue])
-  s.setCurrent(prevTrack)
-  playTrack(prevTrack)
+  seek(0)
 }
 
+// Add a viewer/manual request. It plays immediately only if nothing is playing;
+// otherwise it queues behind whatever's on (including playlist backdrop).
 export function enqueue(track) {
   const s = app()
   const item = { id: crypto.randomUUID(), ...track }
-  const willAutoplay = !s.current
+  const idle = !s.current
+  const position = s.queue.length + 1 // 1-based spot in the request queue
   s.setQueue([...s.queue, item])
-  if (willAutoplay) next()
-  return willAutoplay ? 0 : s.queue.length + 1
+  if (idle) next()
+  return idle ? 0 : position
 }
 
 export function playNow(track) {
@@ -88,6 +119,23 @@ export function playFromQueue(id) {
 
 export function clearQueue() {
   app().setQueue([])
+}
+
+// Start (or jump within) the user's playlist backdrop. Plays immediately; any
+// queued requests still take over when this track ends.
+export function playPlaylist(tracks, startIndex, meta) {
+  const s = app()
+  if (!tracks || !tracks.length) return
+  const index = Math.max(0, Math.min(startIndex || 0, tracks.length - 1))
+  s.setPlaylist({ id: meta.id, name: meta.name, tracks, index, loop: true })
+  s.setLibrary({ activeId: meta.id })
+  s.setCurrent(tracks[index], 'playlist')
+  playTrack(tracks[index])
+}
+
+export function stopPlaylist() {
+  app().setPlaylist(null)
+  app().setLibrary({ activeId: null })
 }
 
 // ---------- playback ----------

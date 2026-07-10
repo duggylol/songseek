@@ -39,6 +39,13 @@ contextBridge.exposeInMainWorld('songseek', {
     onStatus: listen('twitch:status'),
     onRequest: listen('twitch:request'),
   },
+  library: {
+    connect: () => ipcRenderer.invoke('library:connect'),
+    disconnect: () => ipcRenderer.invoke('library:disconnect'),
+    status: () => ipcRenderer.invoke('library:status'),
+    playlists: () => ipcRenderer.invoke('library:playlists'),
+    tracks: (id) => ipcRenderer.invoke('library:tracks', id),
+  },
   search: {
     spotify: (q, limit) => ipcRenderer.invoke('search:spotify', q, limit),
     youtube: (q) => ipcRenderer.invoke('search:youtube', q),

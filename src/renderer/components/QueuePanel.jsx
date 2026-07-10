@@ -44,12 +44,14 @@ function QueueItem({ track, index }) {
 
 export default function QueuePanel() {
   const queue = useApp((s) => s.queue)
+  const playlist = useApp((s) => s.playlist)
+  const currentSource = useApp((s) => s.currentSource)
 
   return (
     <aside className="queue-panel">
       <div className="queue-header">
         <h2>
-          Up Next {queue.length > 0 && <span className="count">{queue.length}</span>}
+          Requests {queue.length > 0 && <span className="count">{queue.length}</span>}
         </h2>
         {queue.length > 0 && (
           <button className="link-btn" onClick={clearQueue}>
@@ -65,11 +67,23 @@ export default function QueuePanel() {
         </AnimatePresence>
         {queue.length === 0 && (
           <div className="queue-empty">
-            <p>Queue is empty</p>
-            <span>Waiting for song requests…</span>
+            <p>No requests yet</p>
+            <span>
+              {playlist
+                ? `Playing from “${playlist.name}” until a viewer requests a song`
+                : 'Viewer song requests will appear here'}
+            </span>
           </div>
         )}
       </div>
+      {queue.length > 0 && playlist && (
+        <div className="queue-resume">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" fill="currentColor" stroke="none" /><circle cx="18" cy="16" r="3" fill="currentColor" stroke="none" />
+          </svg>
+          then back to “{playlist.name}”
+        </div>
+      )}
     </aside>
   )
 }

@@ -1,7 +1,7 @@
 {
   "name": "songseek",
   "productName": "SongSeek",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Twitch song-request jukebox for Spotify, YouTube & SoundCloud",
   "main": "src/main/main.js",
   "author": "augustin",

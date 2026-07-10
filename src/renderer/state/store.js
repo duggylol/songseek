@@ -2,9 +2,14 @@ import { create } from 'zustand'
 
 export const useApp = create((set) => ({
   settings: null,
-  queue: [],
+  queue: [], // viewer/manual requests — priority queue shown on the right
   history: [],
   current: null,
+  currentSource: null, // 'request' | 'playlist'
+  // The user's own music (a Spotify playlist / liked songs) that plays as a
+  // backdrop and resumes when the request queue empties.
+  playlist: null, // { id, name, tracks: [], index, loop }
+  library: { connected: false, playlists: [], loading: false, activeId: null },
   playback: { playing: false, positionMs: 0, durationMs: 0 },
   spotify: { connected: false, user: null, deviceReady: false },
   twitch: { connected: false, user: null, deviceCode: null, error: null },
@@ -20,7 +25,10 @@ export const useApp = create((set) => ({
     set({ queue })
     window.songseek.settings.set({ queue })
   },
-  setCurrent: (current) => set({ current }),
+  setCurrent: (current, currentSource) =>
+    set((s) => ({ current, currentSource: currentSource ?? s.currentSource })),
+  setPlaylist: (playlist) => set({ playlist }),
+  setLibrary: (p) => set((s) => ({ library: { ...s.library, ...p } })),
   setHistory: (history) => set({ history }),
   setPlayback: (p) => set((s) => ({ playback: { ...s.playback, ...p } })),
   setSpotify: (p) => set((s) => ({ spotify: { ...s.spotify, ...p } })),

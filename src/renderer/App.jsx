@@ -6,6 +6,7 @@ import { handleIncomingRequest } from './services/requests'
 import TitleBar from './components/TitleBar'
 import NowPlaying from './components/NowPlaying'
 import QueuePanel from './components/QueuePanel'
+import LibrarySidebar, { loadPlaylists } from './components/LibrarySidebar'
 import SearchBar from './components/SearchBar'
 import SettingsModal from './components/SettingsModal'
 import Toasts from './components/Toasts'
@@ -50,6 +51,9 @@ export default function App() {
       st.setSpotify(sp)
       const tw = await window.songseek.twitch.status()
       st.setTwitch(tw)
+      const lib = await window.songseek.library.status()
+      st.setLibrary({ connected: lib.connected })
+      if (lib.connected) loadPlaylists()
 
       // First-run experience: guide the user into Settings until at least one service is connected.
       if (!sp.connected && !tw.connected) st.setSettingsOpen(true)
@@ -86,6 +90,7 @@ export default function App() {
       <Background />
       <TitleBar />
       <div className="content">
+        <LibrarySidebar />
         <main className="stage">
           <SearchBar />
           <NowPlaying />
