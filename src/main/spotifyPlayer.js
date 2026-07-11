@@ -73,6 +73,9 @@ class SpotifyPlayer extends EventEmitter {
       `audio_output_pipe: "${this.pipePath.replace(/\\/g, '\\\\')}"`,
       'audio_output_pipe_format: s16le',
       'normalisation_disabled: false',
+      // We queue tracks ourselves — never let Spotify autoplay recommendations
+      // after a track ends (it leaked a few seconds of random songs).
+      'disable_autoplay: true',
       'server:',
       '  enabled: true',
       '  address: 127.0.0.1',
@@ -338,20 +341,34 @@ class SpotifyPlayer extends EventEmitter {
   handleEvent(msg) {
     const t = msg.type
     const d = msg.data || {}
+    // Events carry the uri they refer to. During a skip, events for the track we
+    // just left arrive AFTER we've commanded the new one — acting on them caused
+    // phantom skips/restarts and early queue advances. Only trust events that
+    // are about the track we're currently playing.
+    const forCurrent = !d.uri || d.uri === this.currentUri
     if (t === 'metadata') {
+      if (!forCurrent) return
       this.emit('position', {
         positionMs: d.position || 0,
         durationMs: d.duration || 0,
         playing: true,
       })
     } else if (t === 'playing' || t === 'seek') {
+      if (!forCurrent) return
       this.emit('position', { positionMs: d.position, durationMs: d.duration, playing: true })
     } else if (t === 'paused') {
+      if (!forCurrent) return
       this.emit('position', { positionMs: d.position, durationMs: d.duration, playing: false })
-    } else if (t === 'not_playing' || t === 'stopped') {
-      // go-librespot finished *decoding*, but ~1-3s is still buffered in the pacer.
-      // Wait for it to drain so the song plays fully before we advance.
-      if (this.currentUri) this.scheduleEnded()
+    } else if (t === 'not_playing') {
+      // Decode finished for a track — only meaningful if it's ours.
+      if (this.currentUri && d.uri === this.currentUri) this.scheduleEnded()
+    } else if (t === 'stopped') {
+      // `stopped` has no uri. It's the tail of a normal end (already handled via
+      // not_playing) — but never treat it as an end right after we issued a play,
+      // or a skip's stop event would advance the queue a second time.
+      if (this.currentUri && !this.endTimer && Date.now() - (this.lastPlayAt || 0) > 2500) {
+        this.scheduleEnded()
+      }
     }
   }
 
@@ -389,6 +406,9 @@ class SpotifyPlayer extends EventEmitter {
   async playUri(uri) {
     if (!this.ready) await this.start()
     this.currentUri = uri
+    this.lastPlayAt = Date.now()
+    // A pending end-check belongs to the previous track — cancel it.
+    if (this.endTimer) { clearInterval(this.endTimer); this.endTimer = null }
     this.flushPacer() // drop any buffered audio from the previous track
     // The HTTP server is up before Spotify auth completes; retry briefly so the
     // first request after connecting doesn't fail on a not-yet-ready session.

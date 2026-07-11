@@ -146,7 +146,7 @@ export async function playTrack(track) {
   app().setPlayback({ playing: true, positionMs: 0, durationMs: track.durationMs || 0 })
   try {
     if (track.source === 'spotify') {
-      P.spotify = { lastPos: 0, lastAt: Date.now(), playing: true }
+      P.spotify = { lastPos: 0, lastAt: Date.now(), playing: true, startedAt: Date.now() }
       flushSpotifyAudio()
       setSpotifyPlaying(true)
       await resumeSpotifyAudio()
@@ -247,7 +247,11 @@ export function initPlayers(volume) {
     })
   })
   window.songseek.spotify.onEnded(() => {
-    if (P.active === 'spotify') ended()
+    if (P.active !== 'spotify') return
+    // An "ended" arriving right after a track starts is a straggler from the
+    // previous track (skip/transition race) — never advance on it.
+    if (Date.now() - (P.spotify.startedAt || 0) < 2000) return
+    ended()
   })
 
   setInterval(poll, 250)
