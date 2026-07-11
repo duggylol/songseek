@@ -185,7 +185,7 @@ export function stopAll() {
 export function togglePlay() {
   const s = app()
   if (!P.active) {
-    if (s.queue.length) next()
+    next() // starts the queue or resumes the playlist; no-op when neither exists
     return
   }
   const playing = s.playback.playing

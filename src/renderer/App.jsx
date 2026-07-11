@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from './state/store'
 import { initPlayers, togglePlay } from './players/controller'
-import { handleIncomingRequest } from './services/requests'
+import { handleIncomingRequest, handleChatCommand } from './services/requests'
 import TitleBar from './components/TitleBar'
 import NowPlaying from './components/NowPlaying'
 import QueuePanel from './components/QueuePanel'
@@ -60,6 +60,7 @@ export default function App() {
 
       unsubs = [
         window.songseek.twitch.onRequest(handleIncomingRequest),
+        window.songseek.twitch.onCommand(handleChatCommand),
         window.songseek.twitch.onStatus((s) => st.setTwitch(s)),
         window.songseek.onUpdateReady(({ version }) =>
           st.toast(`Update ${version} downloaded — it installs when you close SongSeek`, 'success')

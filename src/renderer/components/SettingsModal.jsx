@@ -191,6 +191,11 @@ export default function SettingsModal() {
             checked={settings.chatAnnounce}
             onChange={(v) => patchSettings({ chatAnnounce: v })}
           />
+          <Toggle
+            label="Mods can control playback in chat (!skip, !pause, !play, !clearqueue — plus !song for everyone)"
+            checked={settings.modCommandsEnabled}
+            onChange={(v) => patchSettings({ modCommandsEnabled: v })}
+          />
         </section>
 
         <section>

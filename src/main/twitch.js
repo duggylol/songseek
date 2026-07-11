@@ -146,15 +146,45 @@ class TwitchService extends EventEmitter {
     const m = line.match(/^(?:@([^ ]+) )?:([^!]+)![^ ]+ PRIVMSG #[^ ]+ :(.*)$/)
     if (!m) return
     const [, rawTags, login, text] = m
-    if (!this.store.get('chatCommandEnabled')) return
-    const cmd = String(this.store.get('chatCommand') || '!sr').trim()
-    if (!cmd || !text.toLowerCase().startsWith(cmd.toLowerCase() + ' ')) return
-    let display = login
+
+    // IRC tags carry sender identity: display-name, mod flag, badges.
+    const tags = {}
     if (rawTags) {
-      const dm = rawTags.match(/display-name=([^;]*)/)
-      if (dm && dm[1]) display = dm[1]
+      for (const kv of rawTags.split(';')) {
+        const eq = kv.indexOf('=')
+        if (eq > 0) tags[kv.slice(0, eq)] = kv.slice(eq + 1)
+      }
     }
-    this.emit('request', { user: display, input: text.slice(cmd.length + 1).trim(), via: 'chat' })
+    const display = tags['display-name'] || login
+    const badges = tags.badges || ''
+    const isMod = tags.mod === '1' || badges.includes('broadcaster/') || badges.includes('moderator/')
+
+    // Song request command (any viewer).
+    if (this.store.get('chatCommandEnabled')) {
+      const cmd = String(this.store.get('chatCommand') || '!sr').trim()
+      if (cmd && text.toLowerCase().startsWith(cmd.toLowerCase() + ' ')) {
+        this.emit('request', { user: display, input: text.slice(cmd.length + 1).trim(), via: 'chat' })
+        return
+      }
+    }
+
+    // Playback commands. !song is for everyone; the rest are mods/broadcaster only.
+    if (!this.store.get('modCommandsEnabled')) return
+    const word = text.trim().split(/\s+/)[0].toLowerCase()
+    const COMMANDS = {
+      '!skip': 'skip',
+      '!pause': 'pause',
+      '!play': 'resume',
+      '!resume': 'resume',
+      '!clearqueue': 'clearqueue',
+      '!song': 'song',
+      '!currentsong': 'song',
+      '!np': 'song',
+    }
+    const action = COMMANDS[word]
+    if (!action) return
+    if (action !== 'song' && !isMod) return // silently ignore non-mods
+    this.emit('command', { cmd: action, user: display, isMod })
   }
 
   say(text) {

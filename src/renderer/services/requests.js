@@ -1,6 +1,6 @@
 import { parseRequest } from './parse'
 import { searchTracks, getTrack } from './spotify'
-import { enqueue } from '../players/controller'
+import { enqueue, next, togglePlay, clearQueue } from '../players/controller'
 import { useApp } from '../state/store'
 
 // Resolve any request (link or free text) into a track.
@@ -65,4 +65,60 @@ export async function handleIncomingRequest({ user, input }) {
       ? `@${user} now playing: "${track.title} — ${track.artist}"`
       : `@${user} added "${track.title} — ${track.artist}" to the queue (#${pos})`
   )
+}
+
+// Mod/viewer chat commands (!skip, !pause, !play, !clearqueue; !song for everyone).
+// Mod-gating happens in the main process from IRC badges — anything arriving
+// here is already authorized. Per-command cooldown stops chat spam.
+const cmdLastRun = {}
+
+export function handleChatCommand({ cmd, user }) {
+  const now = Date.now()
+  if (now - (cmdLastRun[cmd] || 0) < 3000) return
+  cmdLastRun[cmd] = now
+
+  const s = useApp.getState()
+  switch (cmd) {
+    case 'skip': {
+      const cur = s.current
+      if (!cur) return
+      next()
+      s.toast(`${user} skipped “${cur.title}” via chat`, 'info')
+      announce(`@${user} skipped "${cur.title}"`)
+      break
+    }
+    case 'pause': {
+      if (!s.playback.playing) return
+      togglePlay()
+      s.toast(`${user} paused via chat`, 'info')
+      announce(`@${user} paused playback`)
+      break
+    }
+    case 'resume': {
+      if (s.playback.playing) return
+      if (!s.current && !s.queue.length && !s.playlist) return
+      togglePlay()
+      s.toast(`${user} resumed via chat`, 'info')
+      announce(`@${user} resumed playback`)
+      break
+    }
+    case 'clearqueue': {
+      if (!s.queue.length) return
+      const n = s.queue.length
+      clearQueue()
+      s.toast(`${user} cleared ${n} request${n === 1 ? '' : 's'} via chat`, 'info')
+      announce(`@${user} cleared the request queue (${n} song${n === 1 ? '' : 's'})`)
+      break
+    }
+    case 'song': {
+      // A viewer asked — always answer, regardless of the announce setting.
+      const c = s.current
+      window.songseek.twitch.say(
+        c
+          ? `Now playing: ${c.title} — ${c.artist}${c.requestedBy ? ` (requested by ${c.requestedBy})` : ''}`
+          : 'Nothing is playing right now.'
+      )
+      break
+    }
+  }
 }

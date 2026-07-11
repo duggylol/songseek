@@ -58,6 +58,7 @@ function startTwitchService() {
   if (!store.get('twitchTokens') || !store.get('twitchUser')) return
   twitch = new TwitchService({ store, getToken: () => twitchAuth.getAccessToken(store) })
   twitch.on('request', (payload) => send('twitch:request', payload))
+  twitch.on('command', (payload) => send('twitch:command', payload))
   twitch.on('status', (s) => send('twitch:status', twitchStatus(s)))
   twitch.start()
 }

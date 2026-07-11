@@ -10,6 +10,7 @@ const DEFAULTS = {
   chatCommandEnabled: true,
   chatCommand: '!sr',
   chatAnnounce: true,
+  modCommandsEnabled: true,
   volume: 0.8,
   spotifyTokens: null,
   spotifyUser: null,

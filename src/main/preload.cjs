@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('songseek', {
     say: (text) => ipcRenderer.invoke('twitch:say', text),
     onStatus: listen('twitch:status'),
     onRequest: listen('twitch:request'),
+    onCommand: listen('twitch:command'),
   },
   library: {
     connect: () => ipcRenderer.invoke('library:connect'),
