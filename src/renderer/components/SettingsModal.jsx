@@ -199,6 +199,28 @@ export default function SettingsModal() {
         </section>
 
         <section>
+          <h3>
+            <span className="dot-lg" style={{ background: '#8b7bff' }} /> Stream overlay (OBS)
+          </h3>
+          <p className="section-desc">
+            Add this link as a <b>Browser Source</b> in OBS (suggested size 800×160). A "now playing" card slides
+            in whenever a song starts and whenever someone uses <code>!song</code> in chat, then slides away.
+          </p>
+          <div className="sim-row">
+            <input readOnly value="http://127.0.0.1:43112/overlay" onFocus={(e) => e.target.select()} />
+            <button
+              className="btn"
+              onClick={(e) => {
+                navigator.clipboard.writeText('http://127.0.0.1:43112/overlay')
+                toast('Overlay link copied', 'success')
+              }}
+            >
+              Copy
+            </button>
+          </div>
+        </section>
+
+        <section>
           <h3>Test</h3>
           <p className="section-desc">Simulate an incoming request without Twitch (song name or link):</p>
           <div className="sim-row">

@@ -118,6 +118,7 @@ export function handleChatCommand({ cmd, user }) {
           ? `Now playing: ${c.title} — ${c.artist}${c.requestedBy ? ` (requested by ${c.requestedBy})` : ''}`
           : 'Nothing is playing right now.'
       )
+      if (c) window.songseek.overlay.show().catch(() => {}) // replay the OBS animation
       break
     }
   }

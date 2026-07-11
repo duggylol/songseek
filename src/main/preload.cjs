@@ -40,6 +40,11 @@ contextBridge.exposeInMainWorld('songseek', {
     onRequest: listen('twitch:request'),
     onCommand: listen('twitch:command'),
   },
+  overlay: {
+    update: (track) => ipcRenderer.invoke('overlay:update', track),
+    show: () => ipcRenderer.invoke('overlay:show'),
+    hide: () => ipcRenderer.invoke('overlay:hide'),
+  },
   library: {
     connect: () => ipcRenderer.invoke('library:connect'),
     disconnect: () => ipcRenderer.invoke('library:disconnect'),

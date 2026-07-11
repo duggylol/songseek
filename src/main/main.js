@@ -8,6 +8,7 @@ const twitchAuth = require('./twitchAuth')
 const TwitchService = require('./twitch')
 const { SpotifyPlayer } = require('./spotifyPlayer')
 const spotifyLibrary = require('./spotifyLibrary')
+const overlay = require('./overlay')
 const search = require('./searchProxy')
 
 let store = null
@@ -83,12 +84,12 @@ async function createWindow() {
   win.on('maximize', () => send('win:maximized', true))
   win.on('unmaximize', () => send('win:maximized', false))
 
+  // The local server always runs: it serves the UI in production (YouTube's
+  // player refuses embeds without a real web origin) and the OBS overlay always.
+  const port = await serveRenderer()
   if (process.env.VITE_DEV) {
     await win.loadURL('http://127.0.0.1:5173')
   } else {
-    // Serve the UI over local HTTP instead of file:// — YouTube's player refuses
-    // to play many videos (esp. music) for embeds without a real web origin.
-    const port = await serveRenderer()
     await win.loadURL(`http://127.0.0.1:${port}/index.html`)
   }
 }
@@ -111,6 +112,7 @@ function serveRenderer() {
   const root = path.join(__dirname, '../../dist')
   return new Promise((resolve, reject) => {
     rendererServer = http.createServer((req, res) => {
+      if (overlay.handle(req, res)) return
       const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname)
       const file = path.normalize(path.join(root, urlPath === '/' ? 'index.html' : urlPath))
       if (!file.startsWith(root)) {
@@ -195,6 +197,10 @@ function registerIpc() {
   ipcMain.handle('library:status', () => spotifyLibrary.status(store))
   ipcMain.handle('library:playlists', () => spotifyLibrary.playlists(store))
   ipcMain.handle('library:tracks', (_e, id) => spotifyLibrary.playlistTracks(store, id))
+
+  ipcMain.handle('overlay:update', (_e, track) => overlay.setTrack(track))
+  ipcMain.handle('overlay:show', () => overlay.replay())
+  ipcMain.handle('overlay:hide', () => overlay.hide())
 
   ipcMain.handle('resolve:youtubeStream', (_e, id) => require('./ytdlp').resolveStream(id))
   ipcMain.handle('search:youtube', (_e, q) => search.youtubeSearch(q))

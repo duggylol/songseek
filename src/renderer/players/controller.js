@@ -144,6 +144,15 @@ export async function playTrack(track) {
   pauseAllExcept(track.source)
   P.active = track.source
   app().setPlayback({ playing: true, positionMs: 0, durationMs: track.durationMs || 0 })
+  // Feed the OBS overlay (slide-in animation on every new song).
+  window.songseek.overlay
+    .update({
+      title: track.title,
+      artist: track.artist,
+      artwork: track.artwork || '',
+      requestedBy: track.requestedBy && track.requestedBy !== 'You' ? track.requestedBy : null,
+    })
+    .catch(() => {})
   try {
     if (track.source === 'spotify') {
       P.spotify = { lastPos: 0, lastAt: Date.now(), playing: true, startedAt: Date.now() }
@@ -178,6 +187,7 @@ function pauseAllExcept(source) {
 export function stopAll() {
   pauseAllExcept(null)
   window.songseek.spotify.stop()
+  window.songseek.overlay.hide().catch(() => {})
   P.active = null
   app().setPlayback({ playing: false, positionMs: 0, durationMs: 0 })
 }
