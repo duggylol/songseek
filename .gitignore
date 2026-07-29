@@ -7,3 +7,4 @@ release/
 # Contains your private Spotify app secret — never commit this.
 # Copy app-config.example.json to app-config.json and fill it in before building.
 app-config.json
+.vercel

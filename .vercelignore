@@ -1,0 +1,8 @@
+# Only the marketing site (docs/) is deployed — keep app source and binaries out.
+node_modules
+release
+resources
+src
+build
+dist
+*.log
