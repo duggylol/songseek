@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://songseek-app.vercel.app/sitemap.xml
+Sitemap: https://songseek.io/sitemap.xml
