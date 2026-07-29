@@ -41,6 +41,13 @@ contextBridge.exposeInMainWorld('songseek', {
     onRequest: listen('twitch:request'),
     onCommand: listen('twitch:command'),
   },
+  appInfo: () => ipcRenderer.invoke('app:info'),
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    check: () => ipcRenderer.invoke('update:check'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onState: listen('update:state'),
+  },
   overlay: {
     update: (track) => ipcRenderer.invoke('overlay:update', track),
     show: () => ipcRenderer.invoke('overlay:show'),

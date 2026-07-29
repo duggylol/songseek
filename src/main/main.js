@@ -71,13 +71,21 @@ async function createWindow() {
   win.on('maximize', () => send('win:maximized', true))
   win.on('unmaximize', () => send('win:maximized', false))
 
-  // The local server always runs: it serves the UI in production (YouTube's
-  // player refuses embeds without a real web origin) and the OBS overlay always.
-  const port = await serveRenderer()
+  // The local server serves the UI in production (YouTube's player refuses
+  // embeds without a real web origin) and the OBS overlay always. If it can't
+  // bind at all, still show the app rather than dying on launch.
+  let port = null
+  try {
+    port = await serveRenderer()
+  } catch (e) {
+    console.error('[server] could not start:', e.message)
+  }
   if (process.env.VITE_DEV) {
     await win.loadURL('http://127.0.0.1:5173')
-  } else {
+  } else if (port) {
     await win.loadURL(`http://127.0.0.1:${port}/index.html`)
+  } else {
+    await win.loadFile(path.join(__dirname, '../../dist/index.html'))
   }
 }
 
@@ -94,8 +102,26 @@ const MIME = {
 }
 
 let rendererServer = null
-function serveRenderer() {
-  const RENDERER_PORT = 43112
+let rendererPort = null
+
+// Tries the preferred port, then a few fallbacks. A busy port must never stop
+// the app from starting — it only changes the OBS overlay URL.
+async function serveRenderer() {
+  for (let port = 43112; port <= 43117; port++) {
+    try {
+      await listenOn(port)
+      rendererPort = port
+      if (port !== 43112) console.warn(`[server] port 43112 busy, using ${port}`)
+      return port
+    } catch (e) {
+      if (e && e.code === 'EADDRINUSE') continue
+      throw e
+    }
+  }
+  throw new Error('No free port for the local server (43112-43117)')
+}
+
+function listenOn(RENDERER_PORT) {
   const root = path.join(__dirname, '../../dist')
   return new Promise((resolve, reject) => {
     rendererServer = http.createServer((req, res) => {
@@ -117,10 +143,16 @@ function serveRenderer() {
         res.end(data)
       })
     })
-    rendererServer.on('error', reject)
+    rendererServer.on('error', (e) => {
+      try { rendererServer.close() } catch {}
+      rendererServer = null
+      reject(e)
+    })
     rendererServer.listen(RENDERER_PORT, '127.0.0.1', () => resolve(RENDERER_PORT))
   })
 }
+
+const overlayUrl = () => (rendererPort ? `http://127.0.0.1:${rendererPort}/overlay` : null)
 
 function registerIpc() {
   ipcMain.handle('settings:get', () => store.all())
@@ -189,6 +221,20 @@ function registerIpc() {
   ipcMain.handle('library:playlists', () => account.playlists(store))
   ipcMain.handle('library:tracks', (_e, id) => account.playlistTracks(store, id))
 
+  ipcMain.handle('app:info', () => ({ version: app.getVersion(), overlayUrl: overlayUrl() }))
+  ipcMain.handle('update:state', () => updateState)
+  ipcMain.handle('update:check', () => {
+    checkForUpdates()
+    return updateState
+  })
+  ipcMain.handle('update:install', () => {
+    if (!updater || updateState.status !== 'ready') return false
+    if (control) control.stop()
+    // Install now and relaunch. Quitting normally would install it too.
+    setImmediate(() => updater.quitAndInstall(false, true))
+    return true
+  })
+
   ipcMain.handle('overlay:update', (_e, track) => overlay.setTrack(track))
   ipcMain.handle('overlay:show', () => overlay.replay())
   ipcMain.handle('overlay:hide', () => overlay.hide())
@@ -226,54 +272,108 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     store = new Store()
     registerIpc()
-    await createWindow()
-    startTwitchService()
-    // Start watching the user's Spotify playback if already connected.
-    if (store.get('spotifyLibraryTokens')) initSpotifyControl()
+    try {
+      await createWindow()
+      startTwitchService()
+      // Start watching the user's Spotify playback if already connected.
+      if (store.get('spotifyLibraryTokens')) initSpotifyControl()
+    } catch (e) {
+      console.error('[startup]', e)
+    }
+    // Always last and outside the try: updates must run even if something above
+    // failed, so a broken build can still repair itself.
     setupAutoUpdater()
   })
 
-  app.on('before-quit', (e) => {
-    // If an update was downloaded, install it now and relaunch the updated app.
-    if (updateReady && !installingUpdate) {
-      installingUpdate = true
-      e.preventDefault()
-      if (control) control.stop()
-      try {
-        require('electron-updater').autoUpdater.quitAndInstall(true, true) // silent + relaunch
-      } catch {
-        app.exit(0)
-      }
-      return
-    }
+  app.on('before-quit', () => {
+    // Nothing clever here on purpose: electron-updater's autoInstallOnAppQuit
+    // installs a downloaded update as the app exits, so the next launch is
+    // already the new version. Preventing the quit to call quitAndInstall
+    // ourselves was unreliable — if it no-op'd, the app just never closed.
     if (control) control.stop()
   })
   app.on('window-all-closed', () => app.quit())
 }
 
 // ---- auto-update (GitHub Releases) ----
-// Checks in the background while the app is open; the downloaded update is
-// applied when the user closes the app, which then relaunches itself updated.
-let updateReady = null
-let installingUpdate = false
+// Downloads in the background while the app is open and installs on quit, so
+// the next launch runs the new version. Windows only — macOS auto-update needs
+// a paid Apple signing certificate.
+let updater = null
+let updateState = {
+  currentVersion: '',
+  supported: false,
+  status: 'idle', // idle | checking | downloading | ready | current | error | unsupported
+  version: null,
+  percent: 0,
+  error: null,
+}
+
+function updateLog(line) {
+  try {
+    fs.appendFileSync(
+      path.join(app.getPath('userData'), 'update.log'),
+      `[${new Date().toISOString()}] ${line}\n`
+    )
+  } catch {}
+}
+
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch }
+  send('update:state', updateState)
+}
+
+function checkForUpdates() {
+  if (!updater) return
+  setUpdateState({ status: 'checking', error: null })
+  updater.checkForUpdates().catch((e) => {
+    const msg = String((e && e.message) || e)
+    updateLog('check failed: ' + msg)
+    setUpdateState({ status: 'error', error: msg })
+  })
+}
 
 function setupAutoUpdater() {
-  // Windows only: mac auto-update requires a paid Apple signing certificate.
-  if (!app.isPackaged || process.platform !== 'win32') return
-  let updater
-  try {
-    updater = require('electron-updater').autoUpdater
-  } catch {
+  updateState.currentVersion = app.getVersion()
+  const supported = app.isPackaged && process.platform === 'win32'
+  if (!supported) {
+    setUpdateState({ supported: false, status: 'unsupported' })
+    updateLog(`updates unsupported (packaged=${app.isPackaged}, platform=${process.platform})`)
     return
   }
+  try {
+    updater = require('electron-updater').autoUpdater
+  } catch (e) {
+    setUpdateState({ supported: false, status: 'error', error: 'updater unavailable' })
+    return
+  }
+  setUpdateState({ supported: true, status: 'idle' })
+
   updater.autoDownload = true
-  updater.autoInstallOnAppQuit = true // safety net if before-quit doesn't run
-  updater.on('update-downloaded', (info) => {
-    updateReady = info.version
-    send('update:ready', { version: info.version })
+  updater.autoInstallOnAppQuit = true // installs on quit → next launch is updated
+  updater.disableWebInstaller = true
+  updater.logger = { info: updateLog, warn: updateLog, error: updateLog, debug: () => {} }
+
+  updater.on('checking-for-update', () => setUpdateState({ status: 'checking', error: null }))
+  updater.on('update-available', (i) => {
+    updateLog('update available: ' + i.version)
+    setUpdateState({ status: 'downloading', version: i.version, percent: 0, error: null })
   })
-  updater.on('error', () => {}) // offline / no release yet — stay quiet
-  const check = () => updater.checkForUpdates().catch(() => {})
-  setTimeout(check, 20 * 1000) // shortly after launch
-  setInterval(check, 45 * 60 * 1000) // and periodically while open
+  updater.on('update-not-available', () => setUpdateState({ status: 'current', error: null }))
+  updater.on('download-progress', (p) =>
+    setUpdateState({ status: 'downloading', percent: Math.round(p.percent || 0) })
+  )
+  updater.on('update-downloaded', (i) => {
+    updateLog('update downloaded: ' + i.version)
+    setUpdateState({ status: 'ready', version: i.version, percent: 100 })
+    send('update:ready', { version: i.version })
+  })
+  updater.on('error', (e) => {
+    const msg = String((e && e.message) || e)
+    updateLog('error: ' + msg)
+    setUpdateState({ status: 'error', error: msg })
+  })
+
+  setTimeout(checkForUpdates, 4000) // soon after launch, not 20s
+  setInterval(checkForUpdates, 30 * 60 * 1000)
 }

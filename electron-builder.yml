@@ -22,11 +22,8 @@ files:
   - app-config.json
   - package.json
 
-# Bundle the yt-dlp binaries (YouTube audio). The app picks the
-# matching platform-arch folder at runtime.
-extraResources:
-  - from: resources/bin
-    to: bin
+# Bundle only the CURRENT platform's yt-dlp binary (YouTube audio) — shipping
+# the other platform's copy bloated installers and every auto-update by ~36MB.
 
 npmRebuild: false
 
@@ -34,6 +31,9 @@ win:
   target:
     - target: nsis
       arch: [x64]
+  extraResources:
+    - from: resources/bin/win32-x64
+      to: bin/win32-x64
 
 # Step-by-step install wizard (welcome → install location → progress → launch).
 nsis:
@@ -47,6 +47,9 @@ nsis:
   artifactName: SongSeek-Setup-${version}.${ext}
 
 mac:
+  extraResources:
+    - from: resources/bin/darwin-arm64
+      to: bin/darwin-arm64
   target:
     - target: dmg
   category: public.app-category.music

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../state/store'
 import { handleIncomingRequest } from '../services/requests'
@@ -44,6 +44,60 @@ function Ext({ href, children }) {
   )
 }
 
+function UpdateSection() {
+  const [u, setU] = useState({ currentVersion: '', status: 'idle', supported: false })
+  const toast = useApp((s) => s.toast)
+
+  useEffect(() => {
+    window.songseek.update.state().then(setU)
+    return window.songseek.update.onState(setU)
+  }, [])
+
+  const line = () => {
+    switch (u.status) {
+      case 'checking': return 'Checking for updates…'
+      case 'downloading': return `Downloading update ${u.version || ''} — ${u.percent || 0}%`
+      case 'ready': return `Update ${u.version} ready — it installs when you close SongSeek`
+      case 'current': return "You're on the latest version"
+      case 'error': return `Update check failed: ${u.error}`
+      case 'unsupported': return 'Automatic updates run on Windows; on macOS download new versions manually'
+      default: return 'Updates install automatically in the background'
+    }
+  }
+
+  return (
+    <section>
+      <h3>About &amp; updates</h3>
+      <div className="version-row">
+        <span className="version-badge">SongSeek v{u.currentVersion || '—'}</span>
+        <span className={`status ${u.status === 'error' ? 'err' : u.status === 'ready' ? 'ok' : ''}`}>{line()}</span>
+      </div>
+      {u.status === 'downloading' && (
+        <div className="progress-bar"><span style={{ width: `${u.percent || 0}%` }} /></div>
+      )}
+      <div className="connect-row">
+        {u.status === 'ready' ? (
+          <button className="btn" onClick={() => window.songseek.update.install()}>
+            Restart &amp; install now
+          </button>
+        ) : (
+          <button
+            className="btn subtle"
+            disabled={!u.supported || u.status === 'checking' || u.status === 'downloading'}
+            onClick={async () => {
+              await window.songseek.update.check()
+              toast('Checking for updates…', 'info')
+            }}
+          >
+            Check for updates
+          </button>
+        )}
+        <Ext href="https://github.com/duggylol/songseek/releases">Release notes</Ext>
+      </div>
+    </section>
+  )
+}
+
 export default function SettingsModal() {
   const settings = useApp((s) => s.settings) || {}
   const patchSettings = useApp((s) => s.patchSettings)
@@ -55,6 +109,11 @@ export default function SettingsModal() {
   const toast = useApp((s) => s.toast)
   const [busy, setBusy] = useState('')
   const [sim, setSim] = useState('')
+  const [overlayUrl, setOverlayUrl] = useState('http://127.0.0.1:43112/overlay')
+
+  useEffect(() => {
+    window.songseek.appInfo().then((i) => i.overlayUrl && setOverlayUrl(i.overlayUrl))
+  }, [])
 
   const connectSpotify = async () => {
     setBusy('spotify')
@@ -216,11 +275,11 @@ export default function SettingsModal() {
             in whenever a song starts and whenever someone uses <code>!song</code> in chat, then slides away.
           </p>
           <div className="sim-row">
-            <input readOnly value="http://127.0.0.1:43112/overlay" onFocus={(e) => e.target.select()} />
+            <input readOnly value={overlayUrl} onFocus={(e) => e.target.select()} />
             <button
               className="btn"
-              onClick={(e) => {
-                navigator.clipboard.writeText('http://127.0.0.1:43112/overlay')
+              onClick={() => {
+                navigator.clipboard.writeText(overlayUrl)
                 toast('Overlay link copied', 'success')
               }}
             >
@@ -228,6 +287,8 @@ export default function SettingsModal() {
             </button>
           </div>
         </section>
+
+        <UpdateSection />
 
         <section>
           <h3>Test</h3>
