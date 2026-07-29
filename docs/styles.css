@@ -99,7 +99,7 @@ code {
 .btn.small { padding: 9px 18px; font-size: 14.5px; }
 .btn.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border-2); box-shadow: none; }
 .btn.secondary:hover { background: rgba(255,255,255,.11); box-shadow: 0 10px 26px rgba(0,0,0,.35); }
-.cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; justify-content: center; }
 .cta-row.center { justify-content: center; }
 
 /* ---------- hero ---------- */
