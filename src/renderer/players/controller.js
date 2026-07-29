@@ -32,13 +32,15 @@ export function __setRemoteForTest(r) {
 
 // ---------- request queue (SongSeek-owned) ----------
 
-export function enqueue(track) {
+// Returns what ACTUALLY happened so chat isn't told "queued!" when Spotify
+// never accepted it (e.g. Spotify open but idle = no active device).
+export async function enqueue(track) {
   const s = app()
   const item = { id: crypto.randomUUID(), ...track }
   s.setQueue([...s.queue, item])
   const position = s.queue.length + 1
-  reconcile()
-  return position
+  const res = await reconcile()
+  return { position, ...res }
 }
 
 export function removeFromQueue(id) {
@@ -290,22 +292,26 @@ function playSoundcloud(track) {
 // ---------- reconciliation with Spotify's real state ----------
 
 // Hand the next request to Spotify (one at a time) or start a local clip.
-function reconcile() {
+// Resolves with what happened, so callers can report it truthfully.
+async function reconcile() {
   const s = app()
-  if (P.local.playing || P.starting) return
+  if (P.local.playing || P.starting) return { status: 'busy' }
   const head = s.queue[0]
-  if (!head) return
-  if (!s.spotify.hasDevice) return // nothing to control yet
+  if (!head) return { status: 'empty' }
+  if (!s.spotify.hasDevice) return { status: 'no-device' } // Spotify idle/closed
+  if (head.source !== 'spotify') return { status: 'local-pending' } // waits for a track boundary
+  if (P.pushedUri) return { status: 'waiting' } // one already on deck
 
-  if (head.source === 'spotify') {
-    if (P.pushedUri) return // one already on deck
-    P.pushedUri = head.uri
-    SP().addToQueue(head.uri).catch((e) => {
-      P.pushedUri = null
-      s.toast(friendly(e), 'error')
-    })
+  P.pushedUri = head.uri
+  try {
+    await SP().addToQueue(head.uri)
+    return { status: 'pushed' }
+  } catch (e) {
+    P.pushedUri = null
+    const error = friendly(e)
+    s.toast(error, 'error')
+    return { status: 'error', error }
   }
-  // YouTube/SoundCloud items wait for the next Spotify track boundary (below).
 }
 
 export function onSpotifyState(state) {

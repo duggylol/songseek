@@ -127,7 +127,11 @@ function Controls() {
 
 function DeviceBanner() {
   const spotify = useApp((s) => s.spotify)
+  const queueLen = useApp((s) => s.queue.length)
   const setSettingsOpen = useApp((s) => s.setSettingsOpen)
+  const toast = useApp((s) => s.toast)
+  const [starting, setStarting] = useState(false)
+
   if (!spotify.connected) return null
   if (spotify.needsReconnect) {
     return (
@@ -136,14 +140,39 @@ function DeviceBanner() {
       </button>
     )
   }
-  if (!spotify.hasDevice) {
+  if (spotify.hasDevice) return null
+
+  const devices = spotify.availableDevices || []
+  const waiting = queueLen > 0 ? ` ${queueLen} request${queueLen === 1 ? '' : 's'} waiting.` : ''
+
+  // Spotify is open but idle — offer to wake it up from here.
+  if (devices.length) {
+    const d = devices[0]
     return (
-      <div className="device-banner">
-        Open Spotify and play something — SongSeek controls it from there
-      </div>
+      <button
+        className="device-banner warn"
+        disabled={starting}
+        onClick={async () => {
+          setStarting(true)
+          try {
+            await window.songseek.spotify.transfer(d.id)
+          } catch (e) {
+            toast(String(e.message || e).replace(/^Error invoking .*?: /, ''), 'error')
+          }
+          setStarting(false)
+        }}
+      >
+        {starting
+          ? 'Starting…'
+          : `Spotify is open but not playing.${waiting} Click to start it on ${d.name}`}
+      </button>
     )
   }
-  return null
+  return (
+    <div className="device-banner">
+      Open Spotify and press play — SongSeek queues into it from there.{waiting}
+    </div>
+  )
 }
 
 export default function NowPlaying() {

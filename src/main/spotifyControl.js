@@ -50,13 +50,31 @@ class SpotifyControl extends EventEmitter {
       // 204 (null) means: connected, but no active device.
       const j = await account.request(this.store, 'GET', '/me/player')
       if (!j) {
-        this.emitState({ ...emptyState(), hasDevice: false, error: null, needsReconnect: false })
+        // 204 = connected, but nothing is playing. Spotify may still be OPEN and
+        // idle, so list its devices and let the user start one from SongSeek.
+        let devices = this.idleDevices || []
+        if (Date.now() - (this.idleDevicesAt || 0) > 6000) {
+          try {
+            devices = await this.devices()
+            this.idleDevices = devices
+            this.idleDevicesAt = Date.now()
+          } catch {}
+        }
+        this.emitState({
+          ...emptyState(),
+          hasDevice: false,
+          availableDevices: devices,
+          error: null,
+          needsReconnect: false,
+        })
         return
       }
+      this.idleDevices = null
       const item = j.item || null
       this.emitState({
         hasDevice: true,
         needsReconnect: false,
+        availableDevices: [],
         error: null,
         isPlaying: !!j.is_playing,
         progressMs: j.progress_ms || 0,
@@ -179,6 +197,7 @@ function emptyState() {
   return {
     hasDevice: false,
     needsReconnect: false,
+    availableDevices: [],
     error: null,
     isPlaying: false,
     progressMs: 0,

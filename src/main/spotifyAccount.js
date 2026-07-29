@@ -178,15 +178,29 @@ async function request(store, method, pathname, { body, expectEmpty } = {}) {
     disconnect(store)
     throw Object.assign(new Error('Spotify login expired — reconnect.'), { code: 'NO_AUTH' })
   }
-  if (r.status === 403) {
+  // Spotify tells us WHY in error.reason — don't guess. Notably a missing
+  // device comes back as 404/NO_ACTIVE_DEVICE, which is not a Premium problem.
+  if (r.status === 403 || r.status === 404) {
     const j = await r.json().catch(() => ({}))
-    throw Object.assign(new Error((j.error && j.error.message) || 'Spotify Premium is required.'), {
+    const err = (j && j.error) || {}
+    const reason = err.reason || ''
+    if (reason === 'NO_ACTIVE_DEVICE') {
+      throw Object.assign(new Error('Spotify is open but not playing — press play in Spotify first.'), {
+        code: 'NO_DEVICE',
+      })
+    }
+    if (reason === 'PREMIUM_REQUIRED') {
+      throw Object.assign(
+        new Error('Spotify Premium is required to control playback (this account is on Free).'),
+        { code: 'PREMIUM' }
+      )
+    }
+    if (r.status === 404) {
+      throw Object.assign(new Error(err.message || 'Spotify could not find that.'), { code: 'NOT_FOUND' })
+    }
+    throw Object.assign(new Error(err.message || `Spotify refused the request (${reason || 403}).`), {
       code: 'FORBIDDEN',
-    })
-  }
-  if (r.status === 404) {
-    throw Object.assign(new Error('No active Spotify device — open Spotify and play something.'), {
-      code: 'NO_DEVICE',
+      reason,
     })
   }
   if (r.status === 429) {

@@ -58,13 +58,22 @@ export async function handleIncomingRequest({ user, input }) {
     announce(`@${user} sorry, couldn't find "${input}" on Spotify, YouTube or SoundCloud.`)
     return
   }
-  const pos = enqueue({ ...track, requestedBy: user })
+  const r = await enqueue({ ...track, requestedBy: user })
+  const label = `${track.title} — ${track.artist}`
+
+  if (r.status === 'error') {
+    s.toast(`Couldn't queue “${track.title}”: ${r.error}`, 'error')
+    announce(`@${user} couldn't queue "${track.title}" — ${r.error}`)
+    return
+  }
+  if (r.status === 'no-device') {
+    // Kept in SongSeek's list; it goes to Spotify the moment playback starts.
+    s.toast(`${user} requested “${track.title}” — start playing in Spotify to queue it`, 'error')
+    announce(`@${user} "${label}" is saved (#${r.position}) — it'll queue once the stream's Spotify is playing.`)
+    return
+  }
   s.toast(`${user} queued “${track.title}”`, 'success')
-  announce(
-    pos === 0
-      ? `@${user} now playing: "${track.title} — ${track.artist}"`
-      : `@${user} added "${track.title} — ${track.artist}" to the queue (#${pos})`
-  )
+  announce(`@${user} added "${label}" to the queue (#${r.position})`)
 }
 
 // Mod/viewer chat commands (!skip, !pause, !play, !clearqueue; !song for everyone).
