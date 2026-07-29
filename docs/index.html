@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SongSeek — Twitch Song Request App for Spotify, YouTube &amp; SoundCloud</title>
+<meta name="description" content="Free Twitch song request app for streamers. Viewers redeem channel points or type !sr to queue songs from Spotify, YouTube and SoundCloud. Includes an animated OBS now-playing overlay and mod chat commands. Windows &amp; macOS." />
+<meta name="keywords" content="twitch song request, song request app, spotify song requests twitch, channel points song request, twitch music bot, song request bot, youtube song request twitch, soundcloud song request, obs now playing overlay, spotify obs overlay, streamer music tool, twitch chat song request, song request queue, free song request app, twitch affiliate channel points music, content creator music tool" />
+<meta name="author" content="SongSeek" />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+<meta name="theme-color" content="#0a0a0f" />
+<link rel="canonical" href="https://duggylol.github.io/songseek/" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SongSeek" />
+<meta property="og:title" content="SongSeek — Twitch Song Requests for Spotify, YouTube &amp; SoundCloud" />
+<meta property="og:description" content="Turn channel point redemptions and chat commands into a live song queue. Controls the Spotify app you already have open — your playlist keeps going. Free, open source, Windows &amp; macOS." />
+<meta property="og:url" content="https://duggylol.github.io/songseek/" />
+<meta property="og:image" content="https://duggylol.github.io/songseek/img/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="SongSeek — Twitch song requests for Spotify, YouTube and SoundCloud" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="SongSeek — Twitch Song Requests for Spotify, YouTube &amp; SoundCloud" />
+<meta name="twitter:description" content="Viewers redeem channel points, SongSeek queues the song in Spotify — and your playlist carries on. Free OBS now-playing overlay included." />
+<meta name="twitter:image" content="https://duggylol.github.io/songseek/img/og.png" />
+
+<link rel="icon" href="img/favicon.png" type="image/png" />
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png" />
+<link rel="stylesheet" href="styles.css" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "SongSeek",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "Twitch song request app",
+      "operatingSystem": "Windows 10, Windows 11, macOS",
+      "description": "Twitch song request app for streamers. Viewers redeem channel points or use chat commands to queue songs from Spotify, YouTube and SoundCloud. Controls your open Spotify app so your playlist is never interrupted. Includes an animated OBS now-playing browser source overlay and moderator chat commands.",
+      "url": "https://duggylol.github.io/songseek/",
+      "downloadUrl": "https://github.com/duggylol/songseek/releases/latest",
+      "softwareVersion": "0.2.0",
+      "license": "https://github.com/duggylol/songseek/blob/main/LICENSE",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "Twitch channel point redemption song requests",
+        "!sr chat command song requests",
+        "Spotify, YouTube and SoundCloud support",
+        "Adds to the native Spotify queue without interrupting your playlist",
+        "Animated OBS now-playing overlay (browser source)",
+        "Moderator chat commands: !skip, !pause, !play, !clearqueue, !song",
+        "Browse your Spotify playlists and Liked Songs",
+        "Automatic updates"
+      ],
+      "screenshot": "https://duggylol.github.io/songseek/img/app-dashboard.webp"
+    },
+    {
+      "@type": "WebSite",
+      "name": "SongSeek",
+      "url": "https://duggylol.github.io/songseek/"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Does SongSeek interrupt the song I'm already playing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Song requests are added to Spotify's native queue, so the current track finishes, the request plays next, and Spotify then continues the playlist or album you were listening to. SongSeek never replaces your listening context." } },
+        { "@type": "Question", "name": "Do I need Spotify Premium for song requests?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Spotify only allows apps to control playback and queue tracks on Premium accounts. YouTube and SoundCloud requests work without Premium." } },
+        { "@type": "Question", "name": "Does Spotify need to be open?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek is a remote control for the Spotify app you already have running — it does not play Spotify audio itself. Keep Spotify open and playing and SongSeek handles the queue." } },
+        { "@type": "Question", "name": "Do viewers need channel points to request songs?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Channel point redemptions require Twitch Affiliate or Partner, but SongSeek also supports a chat command (!sr by default) that works on any channel." } },
+        { "@type": "Question", "name": "Can moderators skip songs from Twitch chat?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Moderators and the broadcaster can use !skip, !pause, !play and !clearqueue directly in chat. Any viewer can use !song to see what is currently playing." } },
+        { "@type": "Question", "name": "Is there an OBS now-playing overlay?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek serves an animated now-playing overlay you add to OBS as a Browser Source. The card slides in whenever a song starts and whenever a viewer uses !song, then slides away. It updates in real time." } },
+        { "@type": "Question", "name": "Is SongSeek free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek is free and open source under the MIT license, with no subscription, no watermark and no paid tier." } },
+        { "@type": "Question", "name": "Does it work on Mac and Windows?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. There is a Windows installer (.exe) and a macOS build (.dmg). The app updates itself automatically when a new version is released." } },
+        { "@type": "Question", "name": "Can requests come from YouTube links?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Viewers can paste Spotify, YouTube or SoundCloud links, or just type a song name. YouTube requests play as audio inside SongSeek, so videos that block embedding still work." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="orbs" aria-hidden="true">
+  <span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span>
+  <span class="grid-overlay"></span>
+</div>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="SongSeek home">
+      <img src="img/icon.png" width="34" height="34" alt="SongSeek app icon" />
+      <span>SongSeek</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#overlay">OBS overlay</a>
+      <a href="#commands">Commands</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="ghost-btn" href="https://github.com/duggylol/songseek" rel="noopener">GitHub</a>
+      <a class="btn small" href="#download">Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow reveal"><span class="pulse"></span> Free &amp; open source · Windows &amp; macOS</p>
+    <h1 class="reveal">Twitch song requests that <span class="grad">don't hijack your stream</span></h1>
+    <p class="lede reveal">
+      SongSeek turns channel point redemptions and chat commands into a live song queue from
+      <strong>Spotify</strong>, <strong>YouTube</strong> and <strong>SoundCloud</strong>. Requests go straight into
+      your Spotify queue — so the song plays next and your playlist carries on exactly where it left off.
+    </p>
+    <div class="cta-row reveal">
+      <a class="btn" href="#download" data-dl="win">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.6v6.6H3zm0 13L10 19.4v-6.5H3zM11.2 4.4 21 3v8.2h-9.8zm0 15.2L21 21v-8.1h-9.8z"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn secondary" href="#download" data-dl="mac">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.4 12.8c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8c-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.8-2.2c.9-1.2 1.2-2.5 1.3-2.5 0 0-2.5-1-2.5-3.7M14.3 5.4c.6-.8 1-1.9.9-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.8-1.3"/></svg>
+        Download for macOS
+      </a>
+    </div>
+    <p class="micro reveal">No account to create · No subscription · No on-stream watermark</p>
+
+    <figure class="hero-shot reveal" id="shot">
+      <img src="img/app-dashboard.webp" width="1700" height="1063" alt="SongSeek dashboard showing the Spotify library sidebar, the now playing track with album artwork, and a queue of viewer song requests from Twitch chat" fetchpriority="high" />
+      <figcaption class="sr-only">The SongSeek dashboard: your Spotify playlists on the left, now playing in the middle, viewer requests on the right.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sources" aria-label="Supported music sources">
+  <div class="wrap source-row">
+    <span class="src spotify">Spotify</span>
+    <span class="src youtube">YouTube</span>
+    <span class="src soundcloud">SoundCloud</span>
+    <span class="src twitch">Twitch</span>
+    <span class="src obs">OBS</span>
+  </div>
+</section>
+
+<section class="ticker-wrap" aria-label="Example chat requests">
+  <div class="ticker">
+    <div class="ticker-track">
+      <span class="chat"><b>ninjaturtle_92</b> redeemed Song Request · <i>tame impala the less i know the better</i></span>
+      <span class="chat"><b>kaylaaa</b> · <i>!sr https://youtu.be/dQw4w9WgXcQ</i></span>
+      <span class="chat"><b>DJ_wompus</b> redeemed Song Request · <i>daft punk one more time</i></span>
+      <span class="chat"><b>streamsniper404</b> · <i>!sr soundcloud.com/artist/track</i></span>
+      <span class="chat"><b>moddy</b> · <i>!skip</i></span>
+      <span class="chat"><b>lurker_ana</b> · <i>!song</i></span>
+      <span class="chat" aria-hidden="true"><b>ninjaturtle_92</b> redeemed Song Request · <i>tame impala the less i know the better</i></span>
+      <span class="chat" aria-hidden="true"><b>kaylaaa</b> · <i>!sr https://youtu.be/dQw4w9WgXcQ</i></span>
+      <span class="chat" aria-hidden="true"><b>DJ_wompus</b> redeemed Song Request · <i>daft punk one more time</i></span>
+      <span class="chat" aria-hidden="true"><b>streamsniper404</b> · <i>!sr soundcloud.com/artist/track</i></span>
+      <span class="chat" aria-hidden="true"><b>moddy</b> · <i>!skip</i></span>
+      <span class="chat" aria-hidden="true"><b>lurker_ana</b> · <i>!song</i></span>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="section">
+  <div class="wrap">
+    <p class="kicker reveal">How it works</p>
+    <h2 class="reveal">From chat to your speakers in four steps</h2>
+    <p class="section-lede reveal">Set it up once. After that, SongSeek runs in the background and handles every song request for you while you stream.</p>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step-n">1</span>
+        <h3>Connect Spotify and Twitch</h3>
+        <p>Two buttons, two browser logins. No developer account, no API keys, no config files to edit. SongSeek remembers both, so you only do this once.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">2</span>
+        <h3>A viewer requests a song</h3>
+        <p>They redeem your <strong>Song Request</strong> channel point reward, or type <code>!sr</code> in chat. Song names work, and so do direct Spotify, YouTube and SoundCloud links.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">3</span>
+        <h3>SongSeek finds the track</h3>
+        <p>It searches Spotify first, then YouTube, then SoundCloud, and adds the match to the queue with the requester's name attached — all in about a second.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">4</span>
+        <h3>It plays next — your playlist keeps going</h3>
+        <p>The request slots into Spotify's own queue. Your current song finishes, the request plays, then Spotify picks your playlist back up. Nothing is interrupted or replaced.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section id="features" class="section alt">
+  <div class="wrap">
+    <p class="kicker reveal">Features</p>
+    <h2 class="reveal">Everything a music stream needs</h2>
+    <p class="section-lede reveal">Built for streamers who want song requests to feel like part of the show, not a bot fight.</p>
+    <div class="grid">
+      <article class="card reveal">
+        <div class="ico">♪</div>
+        <h3>Never interrupts your playlist</h3>
+        <p>Requests are added to Spotify's real queue instead of taking over playback. Your album, playlist or radio continues after the request — exactly like queueing a song yourself.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">◈</div>
+        <h3>Channel points <em>and</em> chat commands</h3>
+        <p>Listen for a channel point redemption by name, and/or a <code>!sr</code> command. Not an Affiliate yet? The chat command works on any channel from day one.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">▶</div>
+        <h3>Spotify, YouTube &amp; SoundCloud</h3>
+        <p>One queue, three sources. YouTube requests play as audio, so official music videos that block embedding still work instead of erroring out.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">✦</div>
+        <h3>Animated OBS overlay</h3>
+        <p>A now-playing card that slides in on every song change, holds, then slides away. Add one browser source and you're done — it updates in real time.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">⌘</div>
+        <h3>Mod commands in chat</h3>
+        <p>Your mods run the music without touching your PC: <code>!skip</code>, <code>!pause</code>, <code>!play</code>, <code>!clearqueue</code>. Non-mods are ignored automatically.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">☰</div>
+        <h3>Your playlists, built in</h3>
+        <p>Your Spotify playlists and Liked Songs sit in the sidebar. Start one with a click and let requests drop in on top of it through the stream.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">⤓</div>
+        <h3>Full queue control</h3>
+        <p>See every pending request with who asked for it. Remove one, clear them all, or bump a song to play next — right from the dashboard.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico">↻</div>
+        <h3>Updates itself</h3>
+        <p>New versions download quietly in the background and install when you close the app. No re-downloading installers, no "you're on an old version" surprises mid-stream.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="overlay" class="section">
+  <div class="wrap split">
+    <div class="split-text">
+      <p class="kicker reveal">OBS now-playing overlay</p>
+      <h2 class="reveal">Show your viewers what's playing</h2>
+      <p class="reveal">SongSeek serves a ready-made <strong>now-playing overlay</strong> for OBS. Copy the link from Settings, add it as a <strong>Browser Source</strong>, and it starts working — no HTML to edit, no third-party service, no account.</p>
+      <ul class="ticks reveal">
+        <li>Slides in on every song change, then slides away</li>
+        <li>Replays whenever a viewer types <code>!song</code></li>
+        <li>Shows album art, title, artist and who requested it</li>
+        <li>Transparent background — drops onto any scene</li>
+        <li>Real-time updates, no refreshing or polling delay</li>
+      </ul>
+    </div>
+    <figure class="split-media reveal">
+      <img src="img/obs-overlay.webp" width="1000" height="220" alt="SongSeek animated OBS now-playing overlay card showing album art, the song title Stick Around by Plain Blue, and a requested-by badge" loading="lazy" />
+      <figcaption>The overlay as it appears over your stream.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <p class="kicker reveal">Inside the app</p>
+    <h2 class="reveal">Search once, find it anywhere</h2>
+    <p class="section-lede reveal">Type a song and SongSeek searches all three platforms at the same time, Spotify first. Queue it, or play it next — the same search your viewers' requests run through.</p>
+    <figure class="wide-shot reveal">
+      <img src="img/app-search.webp" width="1700" height="1063" alt="SongSeek search results showing matching tracks grouped by Spotify, YouTube and SoundCloud, with the Twitch request queue visible on the right" loading="lazy" />
+    </figure>
+    <figure class="wide-shot reveal">
+      <img src="img/app-settings.webp" width="1700" height="1063" alt="SongSeek settings panel with Spotify and Twitch connection buttons, channel point reward name, chat command options and the OBS overlay browser source link" loading="lazy" />
+      <figcaption>Settings: connect your accounts, name your reward, grab the overlay link.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="commands" class="section">
+  <div class="wrap">
+    <p class="kicker reveal">Chat commands</p>
+    <h2 class="reveal">Run the music from Twitch chat</h2>
+    <p class="section-lede reveal">SongSeek reads Twitch's own moderator badges, so there's nothing to configure — whoever is modded on your channel can already use these.</p>
+    <div class="table-wrap reveal">
+      <table class="cmd-table">
+        <caption class="sr-only">SongSeek Twitch chat commands and who can use them</caption>
+        <thead><tr><th scope="col">Command</th><th scope="col">Who</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>!sr &lt;song or link&gt;</code></td><td><span class="tag">Everyone</span></td><td>Request a song by name or by Spotify / YouTube / SoundCloud link</td></tr>
+          <tr><td><code>!song</code></td><td><span class="tag">Everyone</span></td><td>Bot replies with the current track and replays the OBS overlay</td></tr>
+          <tr><td><code>!skip</code></td><td><span class="tag mod">Mods</span></td><td>Skip the current song</td></tr>
+          <tr><td><code>!pause</code></td><td><span class="tag mod">Mods</span></td><td>Pause playback</td></tr>
+          <tr><td><code>!play</code></td><td><span class="tag mod">Mods</span></td><td>Resume playback</td></tr>
+          <tr><td><code>!clearqueue</code></td><td><span class="tag mod">Mods</span></td><td>Clear all pending requests</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="micro reveal">Commands have a short cooldown so a spammy chat can't machine-gun skips, and non-mods using mod commands are ignored silently.</p>
+  </div>
+</section>
+
+<section id="download" class="section download">
+  <div class="wrap">
+    <div class="dl-card reveal">
+      <img src="img/icon.png" width="88" height="88" alt="SongSeek app icon" />
+      <h2>Get SongSeek</h2>
+      <p>Free, open source, and it updates itself. Works on Windows 10/11 and macOS.</p>
+      <div class="cta-row center">
+        <a class="btn" id="dl-win" href="https://github.com/duggylol/songseek/releases/latest" rel="noopener">Download for Windows</a>
+        <a class="btn secondary" id="dl-mac" href="https://github.com/duggylol/songseek/releases/latest" rel="noopener">Download for macOS</a>
+      </div>
+      <p class="micro">Current version <span data-version>0.2.0</span> · <a href="https://github.com/duggylol/songseek/releases" rel="noopener">All releases</a> · <a href="https://github.com/duggylol/songseek" rel="noopener">Source on GitHub</a></p>
+      <div class="req">
+        <h3>What you'll need</h3>
+        <ul>
+          <li><strong>Spotify Premium</strong>, with the Spotify app open while you stream (Spotify's rule for queue control)</li>
+          <li>A <strong>Twitch account</strong> — Affiliate or Partner only if you want channel point redemptions</li>
+          <li>A <strong>"Song Request" channel point reward</strong> with "require viewer to enter text" enabled</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="section alt">
+  <div class="wrap narrow">
+    <p class="kicker reveal">FAQ</p>
+    <h2 class="reveal">Questions streamers ask</h2>
+    <div class="faq">
+      <details class="reveal"><summary>Does SongSeek interrupt the song I'm already playing?</summary>
+        <p>No. Requests are added to Spotify's native queue, so your current track finishes, the request plays next, and Spotify then carries on with the playlist or album you were listening to. SongSeek never replaces what you had on.</p></details>
+      <details class="reveal"><summary>Do I need Spotify Premium?</summary>
+        <p>For Spotify, yes — Spotify only lets apps queue and control playback on Premium accounts. YouTube and SoundCloud requests work without it.</p></details>
+      <details class="reveal"><summary>Does Spotify have to be open?</summary>
+        <p>Yes. SongSeek is a remote control for the Spotify app you already have running rather than a second player, which is exactly why your queue, devices and playlist history stay in one place. Open Spotify, press play, and SongSeek takes it from there.</p></details>
+      <details class="reveal"><summary>My viewers don't have channel points — can they still request?</summary>
+        <p>Yes. Channel point rewards need Twitch Affiliate or Partner, but the <code>!sr</code> chat command works on any channel, including brand-new ones. You can run either or both.</p></details>
+      <details class="reveal"><summary>Can my mods control the music?</summary>
+        <p>Yes. Mods and you can use <code>!skip</code>, <code>!pause</code>, <code>!play</code> and <code>!clearqueue</code> in chat. SongSeek reads Twitch's moderator badges directly, so there's no allowlist to maintain, and non-mods are ignored.</p></details>
+      <details class="reveal"><summary>How do I add the now-playing overlay to OBS?</summary>
+        <p>Open Settings in SongSeek, copy the overlay link, then in OBS add a <strong>Browser Source</strong> and paste it. A size of roughly 800×160 works well. The background is transparent, so it sits on any scene.</p></details>
+      <details class="reveal"><summary>Does OBS capture the music automatically?</summary>
+        <p>Yes — Spotify and SongSeek are normal desktop audio, so an OBS <strong>Desktop Audio</strong> source picks them up. If you want music on its own mixer track, route it through a virtual audio device such as VoiceMeeter or VB-Cable on Windows, or BlackHole on macOS.</p></details>
+      <details class="reveal"><summary>Is it really free?</summary>
+        <p>Yes — free and open source under the MIT license. No subscription, no paid tier, no watermark on your stream, and nothing phones home: your logins and queue stay on your own machine.</p></details>
+      <details class="reveal"><summary>Can anyone download it and connect their Spotify?</summary>
+        <p>Almost. Spotify keeps new API apps in <em>development mode</em>, which limits Spotify logins to accounts that have been added to the app's allowlist (25 max). If you'd like access, <a href="https://github.com/duggylol/songseek/issues/new" rel="noopener">open an issue on GitHub</a> and ask to be added — or clone the repo and drop in your own Spotify credentials, which takes about five minutes.</p></details>
+      <details class="reveal"><summary>Why does Windows warn me when I install it?</summary>
+        <p>The installer isn't code-signed (certificates are an annual cost), so SmartScreen shows an "unknown publisher" notice. Click <strong>More info → Run anyway</strong>. On macOS, right-click the app and choose <strong>Open</strong> the first time. The source is public if you'd rather build it yourself.</p></details>
+      <details class="reveal"><summary>What happens to requests SongSeek can't find?</summary>
+        <p>It searches Spotify, then YouTube, then SoundCloud. If nothing matches, the bot replies to the requester in chat so they can try a different spelling or paste a link — you don't have to babysit it.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <a class="brand" href="#top"><img src="img/icon.png" width="30" height="30" alt="" /><span>SongSeek</span></a>
+      <p class="micro">A free Twitch song request app for Spotify, YouTube and SoundCloud. Made for streamers who care how their stream sounds.</p>
+    </div>
+    <nav aria-label="Footer">
+      <h2>Product</h2>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#overlay">OBS overlay</a>
+      <a href="#commands">Chat commands</a>
+      <a href="#download">Download</a>
+    </nav>
+    <nav aria-label="Project">
+      <h2>Project</h2>
+      <a href="https://github.com/duggylol/songseek" rel="noopener">Source code</a>
+      <a href="https://github.com/duggylol/songseek/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/duggylol/songseek/issues" rel="noopener">Report an issue</a>
+    </nav>
+  </div>
+  <div class="wrap legal">
+    <p>SongSeek is an independent project and is not affiliated with, endorsed by, or sponsored by Spotify, Twitch, YouTube, SoundCloud or OBS. All trademarks belong to their respective owners.</p>
+  </div>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>

@@ -8,6 +8,9 @@ VER="$1"
 
 echo "→ setting version $VER"
 npm version "$VER" --no-git-tag-version --allow-same-version >/dev/null
+# keep the website's download links and schema pointing at this release
+sed -i '' "s|<span data-version>[^<]*</span>|<span data-version>$VER</span>|" docs/index.html
+sed -i '' "s|\"softwareVersion\": \"[^\"]*\"|\"softwareVersion\": \"$VER\"|" docs/index.html
 
 echo "→ building Windows + macOS installers (this takes a few minutes)"
 rm -rf release
