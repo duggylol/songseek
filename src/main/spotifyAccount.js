@@ -21,9 +21,11 @@ const SCOPES = [...LIBRARY_SCOPES, ...PLAYER_SCOPES].join(' ')
 const b64url = (buf) =>
   buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
+// A user can supply their OWN Spotify app, which makes them its owner and
+// removes the development-mode allowlist entirely. Falls back to the bundled app.
 function clientId(store) {
-  const id = store.get('spotifySearchClientId')
-  if (!id) throw new Error('No Spotify app configured.')
+  const id = (store.get('spotifyUserClientId') || '').trim() || store.get('spotifySearchClientId')
+  if (!id) throw new Error('No Spotify app configured — add your Client ID in Settings.')
   return id
 }
 

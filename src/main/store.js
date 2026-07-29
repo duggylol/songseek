@@ -4,6 +4,7 @@ const { app } = require('electron')
 
 const DEFAULTS = {
   spotifySearchClientId: '',
+  spotifyUserClientId: '', // optional: user's own Spotify app (no allowlist)
   spotifySearchClientSecret: '',
   twitchClientId: '',
   rewardName: 'Song Request',

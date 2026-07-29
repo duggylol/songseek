@@ -195,6 +195,31 @@ export default function SettingsModal() {
               </button>
             )}
           </div>
+
+          <details className="advanced">
+            <summary>Can't connect? Use your own Spotify app</summary>
+            <p className="section-desc">
+              Spotify limits the built-in app to a handful of approved accounts. To skip that, make your own
+              (free, ~3 minutes) — you'll be its owner, so no approval is needed:
+            </p>
+            <ol className="steps-mini">
+              <li>Open the <Ext href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</Ext> and click <b>Create app</b>.</li>
+              <li>Name it anything. Under <b>Redirect URIs</b> add exactly <code>http://127.0.0.1:8888</code></li>
+              <li>Tick <b>Web API</b>, save, then copy the app's <b>Client ID</b> below.</li>
+            </ol>
+            <TextField
+              label="Your Spotify Client ID"
+              value={settings.spotifyUserClientId}
+              placeholder="leave empty to use the built-in app"
+              hint="Changing this signs you out of Spotify so you can log in again with your own app."
+              onSave={async (v) => {
+                if (v === (settings.spotifyUserClientId || '')) return
+                await window.songseek.spotify.disconnect().then(setSpotify).catch(() => {})
+                await patchSettings({ spotifyUserClientId: v })
+                toast(v ? 'Saved — now click Connect Spotify' : 'Back to the built-in Spotify app', 'success')
+              }}
+            />
+          </details>
         </section>
 
         <section>

@@ -140,6 +140,11 @@ function DeviceBanner() {
       </button>
     )
   }
+  // Spotify actively rejected us (no access, Premium, rate limit…). Say so
+  // instead of falling through to a misleading "press play" hint.
+  if (spotify.error) {
+    return <div className="device-banner error">Spotify: {spotify.error}</div>
+  }
   if (spotify.hasDevice) return null
 
   const devices = spotify.availableDevices || []
