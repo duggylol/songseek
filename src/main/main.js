@@ -221,6 +221,47 @@ function registerIpc() {
   ipcMain.handle('library:playlists', () => account.playlists(store))
   ipcMain.handle('library:tracks', (_e, id) => account.playlistTracks(store, id))
 
+  // Plain-English connection self-test — turns "it doesn't work" into a reason.
+  ipcMain.handle('spotify:diagnose', async () => {
+    const lines = []
+    const tok = store.get('spotifyLibraryTokens')
+    const usingOwn = !!(store.get('spotifyUserClientId') || '').trim()
+    lines.push(`Spotify app in use: ${usingOwn ? 'your own Client ID' : 'the built-in one'}`)
+    if (!tok) {
+      lines.push('✗ Not logged in — click "Connect Spotify".')
+      return lines.join('\n')
+    }
+    lines.push(
+      account.hasPlayerScopes(store)
+        ? '✓ Playback permissions granted'
+        : '✗ Missing playback permissions — click "Reconnect".'
+    )
+    try {
+      const me = await account.request(store, 'GET', '/me')
+      lines.push(`✓ Spotify accepted the login (account: ${me.display_name || me.id})`)
+    } catch (e) {
+      lines.push(`✗ Spotify rejected the account: ${e.message}`)
+      if (e.code === 'FORBIDDEN') {
+        lines.push(
+          '   This usually means this Spotify account is not on the built-in app\'s approved list.',
+          '   Fix: use your own Spotify app (below), or ask to be added.'
+        )
+      }
+      return lines.join('\n')
+    }
+    try {
+      const p = await account.request(store, 'GET', '/me/player')
+      if (!p) lines.push('• Spotify is connected but idle — press play in Spotify and test again.')
+      else
+        lines.push(
+          `✓ Sees playback: ${(p.item && p.item.name) || 'nothing'} on ${(p.device && p.device.name) || 'unknown device'}`
+        )
+    } catch (e) {
+      lines.push(`✗ Can't read playback: ${e.message}`)
+    }
+    return lines.join('\n')
+  })
+
   ipcMain.handle('app:info', () => ({ version: app.getVersion(), overlayUrl: overlayUrl() }))
   ipcMain.handle('update:state', () => updateState)
   ipcMain.handle('update:check', () => {

@@ -530,3 +530,10 @@ img { -webkit-user-drag: none; }
   color: #ff9b9b; border-color: rgba(255, 92, 92, 0.45);
   background: rgba(255, 92, 92, 0.12);
 }
+.diag {
+  margin: 4px 0 12px; padding: 12px 14px; border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 1.7; color: var(--muted);
+  white-space: pre-wrap; user-select: text; max-height: 220px; overflow-y: auto;
+}

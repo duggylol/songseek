@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('songseek', {
     devices: () => ipcRenderer.invoke('spotify:devices'),
     transfer: (id) => ipcRenderer.invoke('spotify:transfer', id),
     refresh: () => ipcRenderer.invoke('spotify:refresh'),
+    diagnose: () => ipcRenderer.invoke('spotify:diagnose'),
     onState: listen('spotify:state'),
     onQueue: listen('spotify:queue'),
   },

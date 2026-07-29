@@ -110,6 +110,7 @@ export default function SettingsModal() {
   const [busy, setBusy] = useState('')
   const [sim, setSim] = useState('')
   const [overlayUrl, setOverlayUrl] = useState('http://127.0.0.1:43112/overlay')
+  const [diag, setDiag] = useState('')
 
   useEffect(() => {
     window.songseek.appInfo().then((i) => i.overlayUrl && setOverlayUrl(i.overlayUrl))
@@ -195,6 +196,23 @@ export default function SettingsModal() {
               </button>
             )}
           </div>
+
+          <div className="connect-row">
+            <button
+              className="btn subtle"
+              onClick={async () => {
+                setDiag('Testing…')
+                try {
+                  setDiag(await window.songseek.spotify.diagnose())
+                } catch (e) {
+                  setDiag(String(e.message || e))
+                }
+              }}
+            >
+              Test Spotify connection
+            </button>
+          </div>
+          {diag && <pre className="diag">{diag}</pre>}
 
           <details className="advanced">
             <summary>Can't connect? Use your own Spotify app</summary>
