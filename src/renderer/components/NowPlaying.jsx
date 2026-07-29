@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useApp } from '../state/store'
+import { useApp, selectCurrent, selectIsLocal } from '../state/store'
 import { togglePlay, next, prev, seek, setVolume } from '../players/controller'
 import { fmtTime, SOURCE_META } from '../utils'
 
@@ -56,7 +56,7 @@ function ProgressBar() {
 
 function Controls() {
   const playing = useApp((s) => s.playback.playing)
-  const hasTrack = useApp((s) => !!s.current || s.queue.length > 0)
+  const hasTrack = useApp((s) => !!selectCurrent(s) || s.queue.length > 0)
   const settings = useApp((s) => s.settings)
   const patchSettings = useApp((s) => s.patchSettings)
   const volume = (settings && settings.volume) ?? 0.8
@@ -125,18 +125,43 @@ function Controls() {
   )
 }
 
+function DeviceBanner() {
+  const spotify = useApp((s) => s.spotify)
+  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
+  if (!spotify.connected) return null
+  if (spotify.needsReconnect) {
+    return (
+      <button className="device-banner warn" onClick={() => setSettingsOpen(true)}>
+        Reconnect Spotify in Settings to allow playback control
+      </button>
+    )
+  }
+  if (!spotify.hasDevice) {
+    return (
+      <div className="device-banner">
+        Open Spotify and play something — SongSeek controls it from there
+      </div>
+    )
+  }
+  return null
+}
+
 export default function NowPlaying() {
-  const current = useApp((s) => s.current)
+  const current = useApp(selectCurrent)
+  const isLocal = useApp(selectIsLocal)
 
   const meta = current && SOURCE_META[current.source]
 
+  const key = current ? current.uri || current.sourceId || current.id : 'none'
+
   return (
     <div className="now-playing">
+      <DeviceBanner />
       <div className="artwork">
         <AnimatePresence mode="popLayout">
           {current && current.artwork && (
             <motion.img
-              key={current.id}
+              key={key}
               src={current.artwork}
               alt=""
               draggable={false}
@@ -167,7 +192,7 @@ export default function NowPlaying() {
       <div className="track-info">
         <AnimatePresence mode="wait">
           <motion.div
-            key={current ? current.id : 'none'}
+            key={key}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -177,7 +202,7 @@ export default function NowPlaying() {
               {current ? current.title : 'Nothing playing'}
             </h1>
             <p className="track-artist">
-              {current ? current.artist : 'Queue a song or wait for a request'}
+              {current ? current.artist : 'Play something in Spotify, or queue a request'}
             </p>
             {current && (
               <div className="track-meta">

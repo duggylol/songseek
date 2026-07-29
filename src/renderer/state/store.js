@@ -1,17 +1,29 @@
 import { create } from 'zustand'
 
+const emptySpotify = {
+  connected: false,
+  user: null,
+  needsReconnect: false,
+  hasDevice: false,
+  isPlaying: false,
+  progressMs: 0,
+  durationMs: 0,
+  volumePercent: null,
+  deviceName: null,
+  deviceId: null,
+  supportsVolume: false,
+  track: null,
+  error: null,
+}
+
 export const useApp = create((set) => ({
   settings: null,
-  queue: [], // viewer/manual requests — priority queue shown on the right
-  history: [],
-  current: null,
-  currentSource: null, // 'request' | 'playlist'
-  // The user's own music (a Spotify playlist / liked songs) that plays as a
-  // backdrop and resumes when the request queue empties.
-  playlist: null, // { id, name, tracks: [], index, loop }
-  library: { connected: false, playlists: [], loading: false, activeId: null },
+  queue: [], // SongSeek's pending requests (removable/reorderable)
+  spotifyQueue: [], // what Spotify says is coming up (display only)
+  local: { track: null, playing: false }, // YouTube/SoundCloud playing inside SongSeek
   playback: { playing: false, positionMs: 0, durationMs: 0 },
-  spotify: { connected: false, user: null, deviceReady: false },
+  spotify: { ...emptySpotify },
+  library: { connected: false, playlists: [], loading: false, activeId: null },
   twitch: { connected: false, user: null, deviceCode: null, error: null },
   toasts: [],
   settingsOpen: false,
@@ -25,21 +37,21 @@ export const useApp = create((set) => ({
     set({ queue })
     window.songseek.settings.set({ queue })
   },
-  setCurrent: (current, currentSource) =>
-    set((s) => ({ current, currentSource: currentSource ?? s.currentSource })),
-  setPlaylist: (playlist) => set({ playlist }),
-  setLibrary: (p) => set((s) => ({ library: { ...s.library, ...p } })),
-  setHistory: (history) => set({ history }),
+  setSpotifyQueue: (spotifyQueue) => set({ spotifyQueue }),
+  setLocal: (local) => set({ local }),
   setPlayback: (p) => set((s) => ({ playback: { ...s.playback, ...p } })),
   setSpotify: (p) => set((s) => ({ spotify: { ...s.spotify, ...p } })),
+  setLibrary: (p) => set((s) => ({ library: { ...s.library, ...p } })),
   setTwitch: (p) => set((s) => ({ twitch: { ...s.twitch, ...p } })),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   toast: (text, kind = 'info') => {
     const id = Math.random().toString(36).slice(2)
     set((s) => ({ toasts: [...s.toasts.slice(-4), { id, text, kind }] }))
-    setTimeout(
-      () => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-      5000
-    )
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 5000)
   },
 }))
+
+// What's on right now: a local YouTube/SoundCloud clip takes over the display
+// while it plays; otherwise it's whatever Spotify is playing.
+export const selectCurrent = (s) => s.local.track || s.spotify.track || null
+export const selectIsLocal = (s) => !!s.local.track

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../state/store'
-import { playPlaylist, stopPlaylist } from '../players/controller'
+import { playPlaylist } from '../players/controller'
 
 // Loads the user's playlists into the store. Exported so App can call it on boot.
 export async function loadPlaylists() {
@@ -38,40 +38,30 @@ function LikedIcon() {
 
 export default function LibrarySidebar() {
   const library = useApp((s) => s.library)
-  const playlistState = useApp((s) => s.playlist)
-  const currentSource = useApp((s) => s.currentSource)
-  const setLibrary = useApp((s) => s.setLibrary)
+  const spotify = useApp((s) => s.spotify)
+  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
   const toast = useApp((s) => s.toast)
-  const [busy, setBusy] = useState(false)
   const [loadingId, setLoadingId] = useState(null)
-  const [shuffleOn, setShuffleOn] = useState(true)
+  const [shuffleOn, setShuffleOn] = useState(false)
 
-  const connect = async () => {
-    setBusy(true)
-    try {
-      const st = await window.songseek.library.connect()
-      setLibrary({ connected: st.connected })
-      if (st.connected) {
-        toast('Spotify library connected', 'success')
-        loadPlaylists()
-      }
-    } catch (e) {
-      toast(e.message.replace(/^Error invoking .*?: /, ''), 'error')
-    }
-    setBusy(false)
-  }
+  const connected = spotify.connected && !spotify.needsReconnect
 
   const play = async (pl) => {
     setLoadingId(pl.id)
     try {
-      const tracks = await window.songseek.library.tracks(pl.id)
-      if (!tracks.length) {
-        toast(`"${pl.name}" has no playable tracks`, 'error')
+      // Playlists start on Spotify itself (context), so "up next" stays intact.
+      if (pl.uri && !shuffleOn) {
+        await playPlaylist(null, 0, { id: pl.id, name: pl.name, uri: pl.uri })
       } else {
-        playPlaylist(shuffleOn ? shuffle(tracks) : tracks, 0, { id: pl.id, name: pl.name })
+        const tracks = await window.songseek.library.tracks(pl.id)
+        if (!tracks.length) {
+          toast(`"${pl.name}" has no playable tracks`, 'error')
+        } else {
+          await playPlaylist(shuffleOn ? shuffle(tracks) : tracks, 0, { id: pl.id, name: pl.name })
+        }
       }
     } catch (e) {
-      toast(e.message.replace(/^Error invoking .*?: /, ''), 'error')
+      toast(String(e.message || e).replace(/^Error invoking .*?: /, ''), 'error')
     }
     setLoadingId(null)
   }
@@ -80,7 +70,7 @@ export default function LibrarySidebar() {
     <aside className="library">
       <div className="library-header">
         <h2>Your Library</h2>
-        {library.connected && (
+        {connected && (
           <button
             className={`shuffle-toggle ${shuffleOn ? 'on' : ''}`}
             title={shuffleOn ? 'Shuffle on' : 'Shuffle off'}
@@ -93,18 +83,18 @@ export default function LibrarySidebar() {
         )}
       </div>
 
-      {!library.connected ? (
+      {!connected ? (
         <div className="library-connect">
-          <p>See your playlists and liked songs here, and play them straight from SongSeek.</p>
-          <button className="btn" disabled={busy} onClick={connect}>
-            {busy ? 'Waiting for browser…' : 'Connect your library'}
+          <p>Connect Spotify to see your playlists and liked songs, and start them from here.</p>
+          <button className="btn" onClick={() => setSettingsOpen(true)}>
+            Connect Spotify
           </button>
         </div>
       ) : (
         <div className="library-list">
           {library.loading && !library.playlists.length && <div className="library-hint">Loading…</div>}
           {library.playlists.map((pl) => {
-            const active = playlistState && playlistState.id === pl.id
+            const active = library.activeId === pl.id
             return (
               <button
                 key={pl.id}
@@ -128,7 +118,7 @@ export default function LibrarySidebar() {
                 </div>
                 {loadingId === pl.id ? (
                   <span className="search-spinner" />
-                ) : active && currentSource === 'playlist' ? (
+                ) : active ? (
                   <span className="pl-eq"><i /><i /><i /></span>
                 ) : null}
               </button>
@@ -138,7 +128,7 @@ export default function LibrarySidebar() {
       )}
 
       <AnimatePresence>
-        {playlistState && (
+        {connected && spotify.deviceName && (
           <motion.div
             className="library-footer"
             initial={{ opacity: 0, y: 8 }}
@@ -146,12 +136,9 @@ export default function LibrarySidebar() {
             exit={{ opacity: 0, y: 8 }}
           >
             <div className="lf-text">
-              <span className="lf-label">Backdrop</span>
-              <span className="lf-name">{playlistState.name}</span>
+              <span className="lf-label">Controlling</span>
+              <span className="lf-name">{spotify.deviceName}</span>
             </div>
-            <button className="lf-stop" title="Stop playlist" onClick={stopPlaylist}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

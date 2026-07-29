@@ -2,23 +2,28 @@ const http = require('http')
 const crypto = require('crypto')
 const { shell } = require('electron')
 
-// Reads the user's Spotify library (playlists, liked songs) via the Web API.
-// This uses YOUR registered app (app-config.json) with a normal user login,
-// because the built-in-client login token used for playback is blocked by the
-// public Web API. Playback still goes through go-librespot on the same account,
-// so tracks listed here play fine.
+// The single Spotify account connection: one user login (your registered app)
+// that powers BOTH library reading and playback control. SongSeek never plays
+// Spotify audio itself — it controls the user's own Spotify app.
 
 const REDIRECT_PORT = 8888
 // Must exactly match a Redirect URI registered on the Spotify app.
 const REDIRECT_URI = `http://127.0.0.1:${REDIRECT_PORT}`
-const SCOPES = 'playlist-read-private playlist-read-collaborative user-library-read'
+
+const LIBRARY_SCOPES = ['playlist-read-private', 'playlist-read-collaborative', 'user-library-read']
+const PLAYER_SCOPES = [
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-read-currently-playing',
+]
+const SCOPES = [...LIBRARY_SCOPES, ...PLAYER_SCOPES].join(' ')
 
 const b64url = (buf) =>
   buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
 function clientId(store) {
   const id = store.get('spotifySearchClientId')
-  if (!id) throw new Error('No Spotify app configured for library access.')
+  if (!id) throw new Error('No Spotify app configured.')
   return id
 }
 
@@ -37,6 +42,7 @@ function saveTokens(store, tokens, prev) {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token || (prev && prev.refresh_token),
     expires_at: Date.now() + (tokens.expires_in - 60) * 1000,
+    scope: tokens.scope || (prev && prev.scope) || '',
   })
 }
 
@@ -58,7 +64,7 @@ async function connect(store) {
       res.writeHead(200, { 'Content-Type': 'text/html' })
       res.end(
         `<body style="background:#0a0a0f;color:#eee;font-family:system-ui;display:grid;place-items:center;height:100vh"><h2>${
-          error ? 'Library connection failed — you can close this tab.' : 'Library connected! Return to SongSeek.'
+          error ? 'Spotify connection failed — you can close this tab.' : 'Spotify connected! Return to SongSeek.'
         }</h2></body>`
       )
       clearTimeout(timer)
@@ -102,6 +108,14 @@ async function connect(store) {
     code_verifier: verifier,
   })
   saveTokens(store, tokens, null)
+
+  // Record who's connected (display only).
+  try {
+    const me = await api(store, '/me')
+    store.set('spotifyUser', { id: me.id, name: me.display_name || me.id, product: me.product })
+  } catch {
+    /* non-fatal */
+  }
   return status(store)
 }
 
@@ -120,29 +134,75 @@ async function getToken(store) {
 }
 
 function disconnect(store) {
-  store.merge({ spotifyLibraryTokens: null })
+  store.merge({ spotifyLibraryTokens: null, spotifyUser: null })
+}
+
+// Tokens issued before playback control was added lack the player scopes; the
+// user must reconnect once to grant them.
+function hasPlayerScopes(store) {
+  const t = store.get('spotifyLibraryTokens')
+  if (!t) return false
+  const granted = String(t.scope || '').split(/\s+/)
+  return PLAYER_SCOPES.every((s) => granted.includes(s))
 }
 
 function status(store) {
-  return { connected: !!store.get('spotifyLibraryTokens') }
+  const connected = !!store.get('spotifyLibraryTokens')
+  return {
+    connected,
+    user: store.get('spotifyUser') || null,
+    needsReconnect: connected && !hasPlayerScopes(store),
+  }
 }
 
-async function api(store, pathname) {
+// Raw request helper. Returns parsed JSON, or null for empty (204) responses.
+async function request(store, method, pathname, { body, expectEmpty } = {}) {
   const token = await getToken(store)
-  if (!token) throw new Error('Spotify library is not connected')
+  if (!token) throw Object.assign(new Error('Spotify is not connected'), { code: 'NO_AUTH' })
   const r = await fetch(pathname.startsWith('http') ? pathname : 'https://api.spotify.com/v1' + pathname, {
-    headers: { Authorization: `Bearer ${token}` },
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   })
+  if (r.status === 204 || r.status === 202) return null
   if (r.status === 401) {
+    const j = await r.json().catch(() => ({}))
+    const msg = (j.error && j.error.message) || ''
+    // "Permissions missing" = token lacks the newer scopes, not a dead session.
+    if (/permission/i.test(msg)) {
+      throw Object.assign(new Error('Reconnect Spotify to allow playback control.'), { code: 'NEEDS_RECONNECT' })
+    }
     disconnect(store)
-    throw new Error('Spotify library login expired — reconnect.')
+    throw Object.assign(new Error('Spotify login expired — reconnect.'), { code: 'NO_AUTH' })
+  }
+  if (r.status === 403) {
+    const j = await r.json().catch(() => ({}))
+    throw Object.assign(new Error((j.error && j.error.message) || 'Spotify Premium is required.'), {
+      code: 'FORBIDDEN',
+    })
+  }
+  if (r.status === 404) {
+    throw Object.assign(new Error('No active Spotify device — open Spotify and play something.'), {
+      code: 'NO_DEVICE',
+    })
+  }
+  if (r.status === 429) {
+    throw Object.assign(new Error('Spotify rate limit — slowing down.'), { code: 'RATE_LIMIT' })
   }
   if (!r.ok) {
     const j = await r.json().catch(() => ({}))
     throw new Error((j.error && j.error.message) || `Spotify API error ${r.status}`)
   }
-  return r.json()
+  if (expectEmpty) return null
+  return r.json().catch(() => null)
 }
+
+const api = (store, pathname) => request(store, 'GET', pathname)
+
+// ---- library ----
 
 const mapTrack = (t) => {
   if (!t || !t.id) return null
@@ -158,16 +218,16 @@ const mapTrack = (t) => {
   }
 }
 
-// The virtual "Liked Songs" playlist + the user's own/followed playlists.
 async function playlists(store) {
   const out = [{ id: 'liked', name: 'Liked Songs', trackCount: null, artwork: null, kind: 'liked' }]
   let url = '/me/playlists?limit=50'
   while (url) {
     const j = await api(store, url)
-    for (const p of j.items || []) {
+    for (const p of (j && j.items) || []) {
       if (!p) continue
       out.push({
         id: p.id,
+        uri: p.uri,
         name: p.name,
         trackCount: p.tracks ? p.tracks.total : null,
         artwork: (p.images && p.images[0] && p.images[0].url) || null,
@@ -175,7 +235,7 @@ async function playlists(store) {
         kind: 'playlist',
       })
     }
-    url = j.next
+    url = j && j.next
   }
   return out
 }
@@ -185,8 +245,8 @@ async function likedTracks(store, limit = 200) {
   let url = `/me/tracks?limit=50`
   while (url && tracks.length < limit) {
     const j = await api(store, url)
-    for (const it of j.items || []) tracks.push(mapTrack(it.track))
-    url = j.next
+    for (const it of (j && j.items) || []) tracks.push(mapTrack(it.track))
+    url = j && j.next
   }
   return tracks.filter(Boolean)
 }
@@ -197,10 +257,22 @@ async function playlistTracks(store, id, limit = 500) {
   let url = `/playlists/${id}/tracks?limit=100&fields=next,items(track(id,uri,name,duration_ms,external_urls,artists(name),album(images)))`
   while (url && tracks.length < limit) {
     const j = await api(store, url)
-    for (const it of j.items || []) tracks.push(mapTrack(it.track))
-    url = j.next
+    for (const it of (j && j.items) || []) tracks.push(mapTrack(it.track))
+    url = j && j.next
   }
   return tracks.filter(Boolean)
 }
 
-module.exports = { connect, disconnect, status, playlists, playlistTracks, REDIRECT_URI }
+module.exports = {
+  connect,
+  disconnect,
+  status,
+  getToken,
+  request,
+  api,
+  mapTrack,
+  playlists,
+  playlistTracks,
+  hasPlayerScopes,
+  REDIRECT_URI,
+}

@@ -22,7 +22,7 @@ files:
   - app-config.json
   - package.json
 
-# Bundle the go-librespot binaries (Spotify playback engine). The app picks the
+# Bundle the yt-dlp binaries (YouTube audio). The app picks the
 # matching platform-arch folder at runtime.
 extraResources:
   - from: resources/bin

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useApp } from './state/store'
+import { useApp, selectCurrent } from './state/store'
 import { initPlayers, togglePlay } from './players/controller'
 import { handleIncomingRequest, handleChatCommand } from './services/requests'
 import TitleBar from './components/TitleBar'
@@ -12,7 +12,10 @@ import SettingsModal from './components/SettingsModal'
 import Toasts from './components/Toasts'
 
 function Background() {
-  const art = useApp((s) => s.current && s.current.artwork)
+  const art = useApp((s) => {
+    const c = selectCurrent(s)
+    return c && c.artwork
+  })
   return (
     <div className="bg">
       <AnimatePresence>
@@ -51,9 +54,8 @@ export default function App() {
       st.setSpotify(sp)
       const tw = await window.songseek.twitch.status()
       st.setTwitch(tw)
-      const lib = await window.songseek.library.status()
-      st.setLibrary({ connected: lib.connected })
-      if (lib.connected) loadPlaylists()
+      st.setLibrary({ connected: sp.connected })
+      if (sp.connected && !sp.needsReconnect) loadPlaylists()
 
       // First-run experience: guide the user into Settings until at least one service is connected.
       if (!sp.connected && !tw.connected) st.setSettingsOpen(true)
@@ -67,6 +69,8 @@ export default function App() {
         ),
         window.songseek.spotify.onStatus((s) => {
           st.setSpotify(s)
+          st.setLibrary({ connected: s.connected })
+          if (s.connected && !s.needsReconnect) loadPlaylists()
           if (s.error) st.toast(s.error, 'error')
         }),
       ]

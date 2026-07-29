@@ -3,18 +3,18 @@ const path = require('path')
 const fs = require('fs')
 const http = require('http')
 const Store = require('./store')
-const spotifyAuth = require('./spotifyAuth')
+const account = require('./spotifyAccount')
+const spotifySearch = require('./spotifySearch')
+const { SpotifyControl } = require('./spotifyControl')
 const twitchAuth = require('./twitchAuth')
 const TwitchService = require('./twitch')
-const { SpotifyPlayer } = require('./spotifyPlayer')
-const spotifyLibrary = require('./spotifyLibrary')
 const overlay = require('./overlay')
 const search = require('./searchProxy')
 
 let store = null
 let win = null
 let twitch = null
-let spotify = null
+let control = null
 let twitchConnecting = false
 
 const send = (channel, payload) => {
@@ -22,30 +22,17 @@ const send = (channel, payload) => {
 }
 
 const spotifyStatus = (extra = {}) => ({
-  connected: !!store.get('spotifyTokens'),
-  user: store.get('spotifyUser'),
-  deviceReady: !!(spotify && spotify.isRunning()),
+  ...account.status(store),
   ...extra,
 })
 
-function initSpotifyPlayer() {
-  if (spotify) return
-  spotify = new SpotifyPlayer(store)
-  spotify.on('pcm', (chunk) => {
-    // Forward the raw PCM ArrayBuffer to the renderer's audio worklet.
-    if (win && !win.isDestroyed()) {
-      win.webContents.send('spotify:pcm', chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
-    }
-  })
-  spotify.on('position', (p) => send('spotify:position', p))
-  spotify.on('ended', () => send('spotify:ended'))
-  spotify.on('status', (s) => {
-    if (s.username) {
-      const u = store.get('spotifyUser') || {}
-      store.set('spotifyUser', { ...u, name: s.username })
-    }
-    send('spotify:status', spotifyStatus(s))
-  })
+function initSpotifyControl() {
+  if (control) return control
+  control = new SpotifyControl(store)
+  control.on('state', (s) => send('spotify:state', s))
+  control.on('queue', (q) => send('spotify:queue', q))
+  control.start()
+  return control
 }
 
 const twitchStatus = (extra = {}) => ({
@@ -143,30 +130,39 @@ function registerIpc() {
   })
 
   ipcMain.handle('spotify:connect', async () => {
-    await spotifyAuth.connect(store)
-    initSpotifyPlayer()
-    spotify.start().catch((e) => send('spotify:status', spotifyStatus({ error: e.message })))
+    await account.connect(store)
+    initSpotifyControl()
     send('spotify:status', spotifyStatus())
     return spotifyStatus()
   })
-  ipcMain.handle('spotify:disconnect', async () => {
-    if (spotify) await spotify.stop()
-    spotifyAuth.disconnect(store)
+  ipcMain.handle('spotify:disconnect', () => {
+    if (control) control.stop()
+    control = null
+    account.disconnect(store)
     send('spotify:status', spotifyStatus())
     return spotifyStatus()
   })
   ipcMain.handle('spotify:status', () => spotifyStatus())
-  ipcMain.handle('spotify:play', (_e, uri) => {
-    initSpotifyPlayer()
-    return spotify.playUri(uri)
-  })
-  ipcMain.handle('spotify:pause', () => spotify && spotify.pause())
-  ipcMain.handle('spotify:resume', () => spotify && spotify.resume())
-  ipcMain.handle('spotify:seek', (_e, ms) => spotify && spotify.seek(ms))
-  ipcMain.handle('spotify:stopPlayback', () => spotify && spotify.stopPlayback())
 
-  ipcMain.handle('search:spotify', (_e, q, limit) => spotifyAuth.search(store, q, limit))
-  ipcMain.handle('resolve:spotify', (_e, id) => spotifyAuth.getTrack(store, id))
+  // Remote-control commands against the user's own Spotify app.
+  ipcMain.handle('spotify:addToQueue', (_e, uri) => initSpotifyControl().addToQueue(uri))
+  ipcMain.handle('spotify:next', () => initSpotifyControl().next())
+  ipcMain.handle('spotify:previous', () => initSpotifyControl().previous())
+  ipcMain.handle('spotify:pause', () => initSpotifyControl().pause())
+  ipcMain.handle('spotify:resume', () => initSpotifyControl().play())
+  ipcMain.handle('spotify:seek', (_e, ms) => initSpotifyControl().seek(ms))
+  ipcMain.handle('spotify:setVolume', (_e, pct) => initSpotifyControl().setVolume(pct))
+  ipcMain.handle('spotify:playContext', (_e, opts) => initSpotifyControl().playContext(opts))
+  ipcMain.handle('spotify:devices', () => initSpotifyControl().devices())
+  ipcMain.handle('spotify:transfer', (_e, id) => initSpotifyControl().transferTo(id))
+  ipcMain.handle('spotify:refresh', () => {
+    const c = initSpotifyControl()
+    c.pollState()
+    c.pollQueue()
+  })
+
+  ipcMain.handle('search:spotify', (_e, q, limit) => spotifySearch.search(store, q, limit))
+  ipcMain.handle('resolve:spotify', (_e, id) => spotifySearch.getTrack(store, id))
 
   ipcMain.handle('twitch:connect', async () => {
     if (twitchConnecting) throw new Error('Twitch login already in progress')
@@ -189,14 +185,9 @@ function registerIpc() {
   ipcMain.handle('twitch:status', () => twitchStatus())
   ipcMain.handle('twitch:say', (_e, text) => (twitch ? twitch.say(text) : false))
 
-  ipcMain.handle('library:connect', () => spotifyLibrary.connect(store))
-  ipcMain.handle('library:disconnect', () => {
-    spotifyLibrary.disconnect(store)
-    return spotifyLibrary.status(store)
-  })
-  ipcMain.handle('library:status', () => spotifyLibrary.status(store))
-  ipcMain.handle('library:playlists', () => spotifyLibrary.playlists(store))
-  ipcMain.handle('library:tracks', (_e, id) => spotifyLibrary.playlistTracks(store, id))
+  ipcMain.handle('library:status', () => account.status(store))
+  ipcMain.handle('library:playlists', () => account.playlists(store))
+  ipcMain.handle('library:tracks', (_e, id) => account.playlistTracks(store, id))
 
   ipcMain.handle('overlay:update', (_e, track) => overlay.setTrack(track))
   ipcMain.handle('overlay:show', () => overlay.replay())
@@ -237,11 +228,8 @@ if (!gotLock) {
     registerIpc()
     await createWindow()
     startTwitchService()
-    // Resume the Spotify engine automatically if already logged in.
-    if (store.get('spotifyUser')) {
-      initSpotifyPlayer()
-      spotify.start().catch((e) => send('spotify:status', spotifyStatus({ error: e.message })))
-    }
+    // Start watching the user's Spotify playback if already connected.
+    if (store.get('spotifyLibraryTokens')) initSpotifyControl()
     setupAutoUpdater()
   })
 
@@ -250,7 +238,7 @@ if (!gotLock) {
     if (updateReady && !installingUpdate) {
       installingUpdate = true
       e.preventDefault()
-      if (spotify) spotify.stop()
+      if (control) control.stop()
       try {
         require('electron-updater').autoUpdater.quitAndInstall(true, true) // silent + relaunch
       } catch {
@@ -258,7 +246,7 @@ if (!gotLock) {
       }
       return
     }
-    if (spotify) spotify.stop()
+    if (control) control.stop()
   })
   app.on('window-all-closed', () => app.quit())
 }

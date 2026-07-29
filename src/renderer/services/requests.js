@@ -1,7 +1,7 @@
 import { parseRequest } from './parse'
 import { searchTracks, getTrack } from './spotify'
 import { enqueue, next, togglePlay, clearQueue } from '../players/controller'
-import { useApp } from '../state/store'
+import { useApp, selectCurrent } from '../state/store'
 
 // Resolve any request (link or free text) into a track.
 // Free-text priority: Spotify → YouTube → SoundCloud.
@@ -78,9 +78,9 @@ export function handleChatCommand({ cmd, user }) {
   cmdLastRun[cmd] = now
 
   const s = useApp.getState()
+  const cur = selectCurrent(s)
   switch (cmd) {
     case 'skip': {
-      const cur = s.current
       if (!cur) return
       next()
       s.toast(`${user} skipped “${cur.title}” via chat`, 'info')
@@ -96,7 +96,6 @@ export function handleChatCommand({ cmd, user }) {
     }
     case 'resume': {
       if (s.playback.playing) return
-      if (!s.current && !s.queue.length && !s.playlist) return
       togglePlay()
       s.toast(`${user} resumed via chat`, 'info')
       announce(`@${user} resumed playback`)
@@ -107,18 +106,17 @@ export function handleChatCommand({ cmd, user }) {
       const n = s.queue.length
       clearQueue()
       s.toast(`${user} cleared ${n} request${n === 1 ? '' : 's'} via chat`, 'info')
-      announce(`@${user} cleared the request queue (${n} song${n === 1 ? '' : 's'})`)
+      announce(`@${user} cleared the pending requests (${n} song${n === 1 ? '' : 's'})`)
       break
     }
     case 'song': {
       // A viewer asked — always answer, regardless of the announce setting.
-      const c = s.current
       window.songseek.twitch.say(
-        c
-          ? `Now playing: ${c.title} — ${c.artist}${c.requestedBy ? ` (requested by ${c.requestedBy})` : ''}`
+        cur
+          ? `Now playing: ${cur.title} — ${cur.artist}${cur.requestedBy ? ` (requested by ${cur.requestedBy})` : ''}`
           : 'Nothing is playing right now.'
       )
-      if (c) window.songseek.overlay.show().catch(() => {}) // replay the OBS animation
+      if (cur) window.songseek.overlay.show().catch(() => {}) // replay the OBS animation
       break
     }
   }

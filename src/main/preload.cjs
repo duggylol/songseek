@@ -17,19 +17,20 @@ contextBridge.exposeInMainWorld('songseek', {
     disconnect: () => ipcRenderer.invoke('spotify:disconnect'),
     status: () => ipcRenderer.invoke('spotify:status'),
     onStatus: listen('spotify:status'),
-    // playback engine
-    play: (uri) => ipcRenderer.invoke('spotify:play', uri),
+    // remote control of the user's own Spotify app
+    addToQueue: (uri) => ipcRenderer.invoke('spotify:addToQueue', uri),
+    next: () => ipcRenderer.invoke('spotify:next'),
+    previous: () => ipcRenderer.invoke('spotify:previous'),
     pause: () => ipcRenderer.invoke('spotify:pause'),
     resume: () => ipcRenderer.invoke('spotify:resume'),
     seek: (ms) => ipcRenderer.invoke('spotify:seek', ms),
-    stop: () => ipcRenderer.invoke('spotify:stopPlayback'),
-    onPcm: (cb) => {
-      const h = (_e, data) => cb(data)
-      ipcRenderer.on('spotify:pcm', h)
-      return () => ipcRenderer.removeListener('spotify:pcm', h)
-    },
-    onPosition: listen('spotify:position'),
-    onEnded: listen('spotify:ended'),
+    setVolume: (pct) => ipcRenderer.invoke('spotify:setVolume', pct),
+    playContext: (opts) => ipcRenderer.invoke('spotify:playContext', opts),
+    devices: () => ipcRenderer.invoke('spotify:devices'),
+    transfer: (id) => ipcRenderer.invoke('spotify:transfer', id),
+    refresh: () => ipcRenderer.invoke('spotify:refresh'),
+    onState: listen('spotify:state'),
+    onQueue: listen('spotify:queue'),
   },
   twitch: {
     connect: () => ipcRenderer.invoke('twitch:connect'),
@@ -46,8 +47,6 @@ contextBridge.exposeInMainWorld('songseek', {
     hide: () => ipcRenderer.invoke('overlay:hide'),
   },
   library: {
-    connect: () => ipcRenderer.invoke('library:connect'),
-    disconnect: () => ipcRenderer.invoke('library:disconnect'),
     status: () => ipcRenderer.invoke('library:status'),
     playlists: () => ipcRenderer.invoke('library:playlists'),
     tracks: (id) => ipcRenderer.invoke('library:tracks', id),

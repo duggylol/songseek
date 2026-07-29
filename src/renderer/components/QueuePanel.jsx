@@ -44,8 +44,13 @@ function QueueItem({ track, index }) {
 
 export default function QueuePanel() {
   const queue = useApp((s) => s.queue)
-  const playlist = useApp((s) => s.playlist)
-  const currentSource = useApp((s) => s.currentSource)
+  const spotifyQueue = useApp((s) => s.spotifyQueue)
+  const hasDevice = useApp((s) => s.spotify.hasDevice)
+
+  // Spotify's own upcoming tracks, minus anything we're already showing as a
+  // pending request (the on-deck song appears in both).
+  const requestUris = new Set(queue.map((t) => t.uri).filter(Boolean))
+  const upNext = spotifyQueue.filter((t) => !requestUris.has(t.uri)).slice(0, 12)
 
   return (
     <aside className="queue-panel">
@@ -69,21 +74,31 @@ export default function QueuePanel() {
           <div className="queue-empty">
             <p>No requests yet</p>
             <span>
-              {playlist
-                ? `Playing from “${playlist.name}” until a viewer requests a song`
+              {hasDevice
+                ? 'Requests play next, then Spotify continues where it left off'
                 : 'Viewer song requests will appear here'}
             </span>
           </div>
         )}
+
+        {upNext.length > 0 && (
+          <div className="spotify-upnext">
+            <div className="upnext-label">Up next on Spotify</div>
+            {upNext.map((t, i) => (
+              <div className="q-item ghost" key={(t.uri || '') + i}>
+                <span className="q-index">{i + 1}</span>
+                <div className="q-art">
+                  {t.artwork ? <img src={t.artwork} alt="" draggable={false} /> : <div className="q-art-empty" />}
+                </div>
+                <div className="q-info">
+                  <div className="q-title" title={t.title}>{t.title}</div>
+                  <div className="q-sub">{t.artist}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {queue.length > 0 && playlist && (
-        <div className="queue-resume">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" fill="currentColor" stroke="none" /><circle cx="18" cy="16" r="3" fill="currentColor" stroke="none" />
-          </svg>
-          then back to “{playlist.name}”
-        </div>
-      )}
     </aside>
   )
 }

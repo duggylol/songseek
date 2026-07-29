@@ -61,7 +61,7 @@ export default function SettingsModal() {
     try {
       const st = await window.songseek.spotify.connect()
       setSpotify(st)
-      toast('Spotify connected — Premium is required for playback.', 'success')
+      toast('Spotify connected — keep the Spotify app open and playing.', 'success')
     } catch (e) {
       toast(e.message.replace(/^Error invoking .*?: /, ''), 'error')
     }
@@ -107,16 +107,25 @@ export default function SettingsModal() {
             <span className="dot-lg" style={{ background: '#1DB954' }} /> Spotify
           </h3>
           <p className="section-desc">
-            Just click connect and log in with your Spotify account — no setup needed. Spotify
-            <b> Premium</b> is required for playback. Your login is stored only on this computer.
+            SongSeek <b>controls your Spotify app</b> — it doesn't play audio itself. Keep Spotify open and
+            playing; requests go into its queue, so whatever playlist you're on carries on afterwards.
+            Spotify <b>Premium</b> is required. Your login is stored only on this computer.
           </p>
           <div className="connect-row">
             {spotify.connected ? (
               <>
-                <span className="status ok">
-                  Connected{spotify.user ? ` as ${spotify.user.name}` : ''}
-                  {spotify.deviceReady ? ' · player ready' : ' · player starting…'}
+                <span className={`status ${spotify.needsReconnect ? 'err' : 'ok'}`}>
+                  {spotify.needsReconnect
+                    ? 'Reconnect to allow playback control'
+                    : `Connected${spotify.user ? ` as ${spotify.user.name}` : ''}${
+                        spotify.hasDevice ? ` · controlling ${spotify.deviceName || 'Spotify'}` : ' · open Spotify to control it'
+                      }`}
                 </span>
+                {spotify.needsReconnect && (
+                  <button className="btn" disabled={busy === 'spotify'} onClick={connectSpotify}>
+                    {busy === 'spotify' ? 'Waiting for browser…' : 'Reconnect'}
+                  </button>
+                )}
                 <button className="btn subtle" onClick={() => window.songseek.spotify.disconnect().then(setSpotify)}>
                   Disconnect
                 </button>

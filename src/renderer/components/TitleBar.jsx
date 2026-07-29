@@ -29,7 +29,11 @@ export default function TitleBar() {
         SongSeek
       </div>
       <div className="titlebar-right">
-        <StatusPill label="Spotify" ok={spotify.connected && spotify.deviceReady} onClick={() => setSettingsOpen(true)} />
+        <StatusPill
+          label="Spotify"
+          ok={spotify.connected && !spotify.needsReconnect && spotify.hasDevice}
+          onClick={() => setSettingsOpen(true)}
+        />
         <StatusPill label="Twitch" ok={twitch.connected} onClick={() => setSettingsOpen(true)} />
         <button className="icon-btn no-drag" onClick={() => setSettingsOpen(true)} title="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
