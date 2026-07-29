@@ -7,7 +7,7 @@ VER="$1"
 [ -z "$VER" ] && { echo "usage: ./scripts/release.sh <version>  e.g. 0.1.3"; exit 1; }
 
 echo "→ setting version $VER"
-npm version "$VER" --no-git-tag-version >/dev/null
+npm version "$VER" --no-git-tag-version --allow-same-version >/dev/null
 
 echo "→ building Windows + macOS installers (this takes a few minutes)"
 rm -rf release
@@ -16,9 +16,10 @@ npm run dist:mac
 
 echo "→ committing + tagging"
 git add -A
-git commit -q -m "Release $VER"
-git tag "v$VER"
-git push -q origin main "v$VER"
+git diff --cached --quiet || git commit -q -m "Release $VER"
+git tag -f "v$VER"
+git push -q origin main
+git push -q -f origin "v$VER"
 
 echo "→ publishing GitHub release (installers + update manifests)"
 gh release create "v$VER" \
