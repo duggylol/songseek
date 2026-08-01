@@ -24,15 +24,31 @@ git tag -f "v$VER"
 git push -q origin main
 git push -q -f origin "v$VER"
 
-echo "→ publishing GitHub release (installers + update manifests)"
+echo "→ publishing GitHub release"
+# Create with the small files first, then upload the big installers separately —
+# bundling them into `create` can time out and silently leave a DRAFT release,
+# which the auto-updater cannot see.
 gh release create "v$VER" \
   --title "SongSeek $VER" \
   --notes "SongSeek $VER" \
   release/latest.yml \
-  "release/SongSeek-Setup-$VER.exe" \
-  "release/SongSeek-Setup-$VER.exe.blockmap" \
-  "release/SongSeek-$VER-arm64.dmg"
-gh release edit "v$VER" --draft=false
+  "release/SongSeek-Setup-$VER.exe.blockmap" || true
+
+for f in "release/SongSeek-Setup-$VER.exe" "release/SongSeek-$VER-arm64.dmg"; do
+  echo "   uploading $(basename "$f")…"
+  for attempt in 1 2 3; do
+    gh release upload "v$VER" "$f" --clobber && break
+    echo "   retry $attempt for $(basename "$f")"
+  done
+done
+
+# Only go live once the installer is actually attached.
+if gh release view "v$VER" --json assets --jq '.assets[].name' | grep -q "SongSeek-Setup-$VER.exe$"; then
+  gh release edit "v$VER" --draft=false
+else
+  echo "✗ Installer missing from the release — leaving it as a draft so clients don't see a broken update."
+  exit 1
+fi
 
 echo "✓ Released $VER. Installed apps (0.1.1+) will auto-update on next close."
 echo "  Windows link: https://github.com/duggylol/songseek/releases/download/v$VER/SongSeek-Setup-$VER.exe"
