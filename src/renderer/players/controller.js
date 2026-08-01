@@ -298,6 +298,9 @@ async function reconcile() {
   if (P.local.playing || P.starting) return { status: 'busy' }
   const head = s.queue[0]
   if (!head) return { status: 'empty' }
+  // A rate limit is temporary — the song stays queued and goes over on the
+  // next successful poll, so don't blame the user's Spotify for it.
+  if (s.spotify.limited) return { status: 'rate-limited' }
   if (!s.spotify.hasDevice) return { status: 'no-device' } // Spotify idle/closed
   if (head.source !== 'spotify') return { status: 'local-pending' } // waits for a track boundary
   if (P.pushedUri) return { status: 'waiting' } // one already on deck

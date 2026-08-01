@@ -206,7 +206,12 @@ async function request(store, method, pathname, { body, expectEmpty } = {}) {
     })
   }
   if (r.status === 429) {
-    throw Object.assign(new Error('Spotify rate limit — slowing down.'), { code: 'RATE_LIMIT' })
+    // Spotify tells us how long to wait; honour it instead of guessing.
+    const retryAfter = parseInt(r.headers.get('retry-after') || '', 10)
+    throw Object.assign(new Error('Spotify is rate limiting SongSeek.'), {
+      code: 'RATE_LIMIT',
+      retryAfter: Number.isFinite(retryAfter) ? retryAfter : null,
+    })
   }
   if (!r.ok) {
     const j = await r.json().catch(() => ({}))

@@ -142,6 +142,13 @@ function DeviceBanner() {
   }
   // Spotify actively rejected us (no access, Premium, rate limit…). Say so
   // instead of falling through to a misleading "press play" hint.
+  if (spotify.limited) {
+    return (
+      <div className="device-banner">
+        Spotify is rate limiting SongSeek — catching up in a moment. Requests are still being saved.
+      </div>
+    )
+  }
   if (spotify.error) {
     return <div className="device-banner error">Spotify: {spotify.error}</div>
   }

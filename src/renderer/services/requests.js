@@ -66,6 +66,11 @@ export async function handleIncomingRequest({ user, input }) {
     announce(`@${user} couldn't queue "${track.title}" — ${r.error}`)
     return
   }
+  if (r.status === 'rate-limited') {
+    s.toast(`${user} requested “${track.title}” — Spotify is busy, queueing shortly`, 'info')
+    announce(`@${user} "${label}" is queued (#${r.position}) — Spotify is rate limiting us, it'll go in shortly.`)
+    return
+  }
   if (r.status === 'no-device') {
     // Kept in SongSeek's list; it goes to Spotify the moment playback starts.
     s.toast(`${user} requested “${track.title}” — start playing in Spotify to queue it`, 'error')
