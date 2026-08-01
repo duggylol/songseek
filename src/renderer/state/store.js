@@ -44,10 +44,13 @@ export const useApp = create((set) => ({
   setLibrary: (p) => set((s) => ({ library: { ...s.library, ...p } })),
   setTwitch: (p) => set((s) => ({ twitch: { ...s.twitch, ...p } })),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   toast: (text, kind = 'info') => {
     const id = Math.random().toString(36).slice(2)
+    // Errors linger longer — they usually need reading.
+    const ms = kind === 'error' ? 9000 : 5000
     set((s) => ({ toasts: [...s.toasts.slice(-4), { id, text, kind }] }))
-    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 5000)
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), ms)
   },
 }))
 

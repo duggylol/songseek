@@ -4,7 +4,8 @@ const { app } = require('electron')
 
 const DEFAULTS = {
   spotifySearchClientId: '',
-  spotifyUserClientId: '', // optional: user's own Spotify app (no allowlist)
+  spotifyUserClientId: '', // the user's own Spotify app (no allowlist)
+  setupComplete: false, // first-run guide is shown until this is true
   spotifySearchClientSecret: '',
   twitchClientId: '',
   rewardName: 'Song Request',
@@ -51,6 +52,12 @@ class Store {
     // Bundled values always win — they come from the build, not user input.
     for (const key of BUNDLED_KEYS) {
       if (bundled[key]) this.data[key] = bundled[key]
+    }
+    // Anyone already connected has clearly finished setup — don't show the
+    // first-run guide to existing users on upgrade.
+    if (this.data.setupComplete !== true && (this.data.spotifyLibraryTokens || this.data.twitchTokens)) {
+      this.data.setupComplete = true
+      this.save()
     }
     this.bundled = bundled
   }

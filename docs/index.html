@@ -54,7 +54,8 @@
         "Animated OBS now-playing overlay (browser source)",
         "Moderator chat commands: !skip, !pause, !play, !clearqueue, !song",
         "Browse your Spotify playlists and Liked Songs",
-        "Automatic updates"
+        "Automatic updates",
+        "Guided first-run setup for your own Spotify app"
       ],
       "screenshot": "https://songseek.io/img/app-dashboard.webp"
     },
@@ -82,6 +83,8 @@
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek is free and open source under the MIT license, with no subscription, no watermark and no paid tier." } },
         { "@type": "Question", "name": "Does it work on Mac and Windows?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. There is a Windows installer (.exe) and a macOS build (.dmg). The app updates itself automatically when a new version is released." } },
+        { "@type": "Question", "name": "Why do I need to create my own Spotify app?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Spotify requires every app using its API to be registered, and limits each one to a small number of approved accounts unless the developer is a large company. SongSeek therefore has you create your own free Spotify app in about three minutes, guided step by step on first launch. It is free, it belongs to you, and it means no one else's usage can rate-limit you. You only ever need the Client ID, never a client secret." } },
         { "@type": "Question", "name": "Can requests come from YouTube links?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. Viewers can paste Spotify, YouTube or SoundCloud links, or just type a song name. YouTube requests play as audio inside SongSeek, so videos that block embedding still work." } }
       ]
@@ -138,7 +141,7 @@
         Download for macOS
       </a>
     </div>
-    <p class="micro reveal">No account to create · No subscription · No on-stream watermark</p>
+    <p class="micro reveal">Free &amp; open source · No subscription · No watermark · Uses your own Spotify app</p>
 
     <figure class="hero-shot reveal" id="shot">
       <img src="img/app-dashboard.webp" width="1700" height="1063" alt="SongSeek dashboard showing the Spotify library sidebar, the now playing track with album artwork, and a queue of viewer song requests from Twitch chat" fetchpriority="high" />
@@ -184,8 +187,8 @@
     <ol class="steps">
       <li class="step reveal">
         <span class="step-n">1</span>
-        <h3>Connect Spotify and Twitch</h3>
-        <p>Two buttons, two browser logins. No developer account, no API keys, no config files to edit. SongSeek remembers both, so you only do this once.</p>
+        <h3>Run the setup guide</h3>
+        <p>On first launch SongSeek walks you through creating your own free Spotify app and connecting Twitch — with animated pictures of every screen. About five minutes, once.</p>
       </li>
       <li class="step reveal">
         <span class="step-n">2</span>
@@ -330,6 +333,7 @@
         <h3>What you'll need</h3>
         <ul>
           <li><strong>Spotify Premium</strong>, with the Spotify app open while you stream (Spotify's rule for queue control)</li>
+          <li>Your own <strong>free Spotify developer app</strong> — the built-in guide walks you through it in about three minutes, and it means your access is yours alone: no waiting list, no shared rate limits</li>
           <li>A <strong>Twitch account</strong> — Affiliate or Partner only if you want channel point redemptions</li>
           <li>A <strong>"Song Request" channel point reward</strong> with "require viewer to enter text" enabled</li>
         </ul>
@@ -359,8 +363,10 @@
         <p>Yes — Spotify and SongSeek are normal desktop audio, so an OBS <strong>Desktop Audio</strong> source picks them up. If you want music on its own mixer track, route it through a virtual audio device such as VoiceMeeter or VB-Cable on Windows, or BlackHole on macOS.</p></details>
       <details class="reveal"><summary>Is it really free?</summary>
         <p>Yes — free and open source under the MIT license. No subscription, no paid tier, no watermark on your stream, and nothing phones home: your logins and queue stay on your own machine.</p></details>
-      <details class="reveal"><summary>Can anyone download it and connect their Spotify?</summary>
-        <p>Almost. Spotify keeps new API apps in <em>development mode</em>, which limits Spotify logins to accounts that have been added to the app's allowlist (25 max). If you'd like access, <a href="https://github.com/duggylol/songseek/issues/new" rel="noopener">open an issue on GitHub</a> and ask to be added — or clone the repo and drop in your own Spotify credentials, which takes about five minutes.</p></details>
+      <details class="reveal"><summary>Why do I need to create my own Spotify app?</summary>
+        <p>Spotify requires every app that uses its API to be registered, and it limits each one to a small number of approved accounts unless the developer is a company with hundreds of thousands of users. Rather than put everyone on a waiting list behind one shared app, SongSeek has you create your own in about three minutes — the first-run guide shows you each screen. It's free, it's yours, and it means nobody else's usage can rate-limit you.</p></details>
+      <details class="reveal"><summary>Is creating a Spotify app complicated?</summary>
+        <p>No. You log into Spotify's developer dashboard with your normal Spotify account, click <b>Create app</b>, give it a name, paste in one redirect address that SongSeek gives you (with a copy button), tick <b>Web API</b> and save. Then you copy the app's Client ID back into SongSeek. The guide animates every step, and you only ever need the Client ID — never a secret.</p></details>
       <details class="reveal"><summary>Why does Windows warn me when I install it?</summary>
         <p>The installer isn't code-signed (certificates are an annual cost), so SmartScreen shows an "unknown publisher" notice. Click <strong>More info → Run anyway</strong>. On macOS, right-click the app and choose <strong>Open</strong> the first time. The source is public if you'd rather build it yourself.</p></details>
       <details class="reveal"><summary>What happens to requests SongSeek can't find?</summary>

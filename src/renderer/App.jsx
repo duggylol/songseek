@@ -9,6 +9,7 @@ import QueuePanel from './components/QueuePanel'
 import LibrarySidebar, { loadPlaylists } from './components/LibrarySidebar'
 import SearchBar from './components/SearchBar'
 import SettingsModal from './components/SettingsModal'
+import Onboarding from './components/Onboarding'
 import Toasts from './components/Toasts'
 
 function Background() {
@@ -38,6 +39,8 @@ function Background() {
 
 export default function App() {
   const settingsOpen = useApp((s) => s.settingsOpen)
+  // Shown until the user finishes (or skips) setup.
+  const showSetup = useApp((s) => !!s.settings && !s.settings.setupComplete)
 
   useEffect(() => {
     const st = useApp.getState()
@@ -57,8 +60,7 @@ export default function App() {
       st.setLibrary({ connected: sp.connected })
       if (sp.connected && !sp.needsReconnect) loadPlaylists()
 
-      // First-run experience: guide the user into Settings until at least one service is connected.
-      if (!sp.connected && !tw.connected) st.setSettingsOpen(true)
+      // First run shows the setup guide instead of the Settings panel.
 
       unsubs = [
         window.songseek.twitch.onRequest(handleIncomingRequest),
@@ -104,6 +106,7 @@ export default function App() {
       </div>
       <Toasts />
       <AnimatePresence>{settingsOpen && <SettingsModal key="settings" />}</AnimatePresence>
+      <AnimatePresence>{showSetup && <Onboarding key="onboarding" />}</AnimatePresence>
     </div>
   )
 }

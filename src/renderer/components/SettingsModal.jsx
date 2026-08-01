@@ -98,6 +98,22 @@ function UpdateSection() {
   )
 }
 
+function SetupAgain() {
+  const patchSettings = useApp((s) => s.patchSettings)
+  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
+  return (
+    <button
+      className="btn subtle"
+      onClick={async () => {
+        await patchSettings({ setupComplete: false })
+        setSettingsOpen(false)
+      }}
+    >
+      Run setup guide
+    </button>
+  )
+}
+
 export default function SettingsModal() {
   const settings = useApp((s) => s.settings) || {}
   const patchSettings = useApp((s) => s.patchSettings)
@@ -198,6 +214,7 @@ export default function SettingsModal() {
           </div>
 
           <div className="connect-row">
+            <SetupAgain />
             <button
               className="btn subtle"
               onClick={async () => {
