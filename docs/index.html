@@ -142,6 +142,13 @@
       </a>
     </div>
     <p class="micro reveal">Free &amp; open source · No subscription · No watermark · Uses your own Spotify app</p>
+    <div class="dl-stat reveal" id="dl-stat" hidden>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v12M7 11l5 5 5-5M4 20h16" />
+      </svg>
+      <strong id="dl-count">0</strong>
+      <span>downloads</span>
+    </div>
 
     <figure class="hero-shot reveal" id="shot">
       <img src="img/app-dashboard.webp" width="1700" height="1063" alt="SongSeek dashboard showing the Spotify library sidebar, the now playing track with album artwork, and a queue of viewer song requests from Twitch chat" fetchpriority="high" />
@@ -403,5 +410,9 @@
 </footer>
 
 <script src="app.js" defer></script>
+
+<!-- Vercel Web Analytics -->
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

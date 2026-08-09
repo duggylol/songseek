@@ -322,3 +322,13 @@ figcaption { margin-top: 13px; font-size: 13px; color: var(--muted-2); text-alig
   .hero-shot { margin-top: 42px; }
 }
 @media (max-width: 420px) { .nav-cta .ghost-btn { display: none; } }
+
+/* ---------- live download counter ---------- */
+.dl-stat {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 18px;
+  padding: 8px 16px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--border);
+  font-size: 13px; color: var(--muted);
+}
+.dl-stat svg { color: var(--accent); }
+.dl-stat strong { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
