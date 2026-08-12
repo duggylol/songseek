@@ -3,36 +3,54 @@ import { searchTracks, getTrack } from './spotify'
 import { enqueue, next, togglePlay, clearQueue } from '../players/controller'
 import { useApp, selectCurrent } from '../state/store'
 
-// Resolve any request (link or free text) into a track.
+// Which platforms the streamer accepts requests from.
+export function allowedSources() {
+  const st = useApp.getState().settings || {}
+  return {
+    spotify: st.allowSpotify !== false,
+    youtube: st.allowYoutube !== false,
+    soundcloud: st.allowSoundcloud !== false,
+  }
+}
+
+const LABEL = { spotify: 'Spotify', youtube: 'YouTube', soundcloud: 'SoundCloud' }
+
+// Resolve any request (link or free text) into a track, honouring the
+// enabled platforms. Returns { track } or { blocked: '<platform>' }.
 // Free-text priority: Spotify → YouTube → SoundCloud.
 export async function resolveRequest(text) {
   const p = parseRequest(text)
-  if (!p) return null
-  switch (p.type) {
-    case 'spotify':
-      return getTrack(p.id)
-    case 'youtube':
-      return window.songseek.search.resolveYoutube(p.id)
-    case 'soundcloud':
-      return window.songseek.search.resolveSoundcloud(p.url)
-    case 'query': {
-      try {
-        const s = await searchTracks(p.q, 1)
-        if (s[0]) return s[0]
-      } catch {}
-      try {
-        const y = await window.songseek.search.youtube(p.q)
-        if (y[0]) return y[0]
-      } catch {}
-      try {
-        const sc = await window.songseek.search.soundcloud(p.q)
-        if (sc[0]) return sc[0]
-      } catch {}
-      return null
-    }
-    default:
-      return null
+  if (!p) return { track: null }
+  const allow = allowedSources()
+
+  if (p.type !== 'query') {
+    // A direct link to a platform that's switched off.
+    if (!allow[p.type]) return { blocked: LABEL[p.type] }
+    if (p.type === 'spotify') return { track: await getTrack(p.id) }
+    if (p.type === 'youtube') return { track: await window.songseek.search.resolveYoutube(p.id) }
+    if (p.type === 'soundcloud') return { track: await window.songseek.search.resolveSoundcloud(p.url) }
+    return { track: null }
   }
+
+  if (allow.spotify) {
+    try {
+      const s = await searchTracks(p.q, 1)
+      if (s[0]) return { track: s[0] }
+    } catch {}
+  }
+  if (allow.youtube) {
+    try {
+      const y = await window.songseek.search.youtube(p.q)
+      if (y[0]) return { track: y[0] }
+    } catch {}
+  }
+  if (allow.soundcloud) {
+    try {
+      const sc = await window.songseek.search.soundcloud(p.q)
+      if (sc[0]) return { track: sc[0] }
+    } catch {}
+  }
+  return { track: null }
 }
 
 function announce(text) {
@@ -48,14 +66,29 @@ export async function handleIncomingRequest({ user, input }) {
     return
   }
   let track = null
+  let blocked = null
   try {
-    track = await resolveRequest(input)
+    const r = await resolveRequest(input)
+    track = r.track
+    blocked = r.blocked
   } catch (e) {
     console.error('request resolve failed:', e)
   }
+  if (blocked) {
+    s.toast(`${user} requested a ${blocked} link — ${blocked} requests are turned off`, 'error')
+    announce(`@${user} ${blocked} requests are turned off on this stream.`)
+    return
+  }
   if (!track) {
     s.toast(`Couldn't find "${input}" (requested by ${user})`, 'error')
-    announce(`@${user} sorry, couldn't find "${input}" on Spotify, YouTube or SoundCloud.`)
+    const names = Object.entries(allowedSources())
+      .filter(([, on]) => on)
+      .map(([k]) => LABEL[k])
+    announce(
+      names.length
+        ? `@${user} sorry, couldn't find "${input}" on ${names.join(', ')}.`
+        : `@${user} song requests are turned off right now.`
+    )
     return
   }
   const r = await enqueue({ ...track, requestedBy: user })

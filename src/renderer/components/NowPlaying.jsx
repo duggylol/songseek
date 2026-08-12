@@ -59,7 +59,13 @@ function Controls() {
   const hasTrack = useApp((s) => !!selectCurrent(s) || s.queue.length > 0)
   const settings = useApp((s) => s.settings)
   const patchSettings = useApp((s) => s.patchSettings)
-  const volume = (settings && settings.volume) ?? 0.8
+  // Spotify's own device level is the source of truth when we have it, so the
+  // slider shows what the stream is actually hearing.
+  const spotifyVol = useApp((s) => s.spotify.volumePercent)
+  const volume =
+    typeof spotifyVol === 'number' && spotifyVol >= 0
+      ? spotifyVol / 100
+      : (settings && settings.volume) ?? 0.8
 
   return (
     <div className="controls-row">

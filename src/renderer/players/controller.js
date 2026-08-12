@@ -22,6 +22,26 @@ const P = {
 
 const app = () => useApp.getState()
 
+// A YouTube/SoundCloud request must come out at the SAME level as Spotify,
+// otherwise it blasts over a quiet stream. Spotify's own device volume is the
+// source of truth whenever we know it (the streamer usually sets it in Spotify,
+// not in SongSeek); the in-app slider is only a fallback.
+function effectiveVolume() {
+  const pct = app().spotify.volumePercent
+  if (typeof pct === 'number' && pct >= 0) {
+    P.lastSpotifyVolume = pct / 100
+    return P.lastSpotifyVolume
+  }
+  // Spotify may be paused/idle by the time a clip starts — reuse the last level.
+  if (typeof P.lastSpotifyVolume === 'number') return P.lastSpotifyVolume
+  return P.volume
+}
+
+function applyLocalVolume(v) {
+  try { if (P.yt.audio) P.yt.audio.volume = Math.max(0, Math.min(1, v)) } catch {}
+  try { if (P.sc.widget) P.sc.widget.setVolume(Math.max(0, Math.min(1, v)) * 100) } catch {}
+}
+
 // All Spotify remote calls go through here so tests can swap in a fake remote
 // (the real bridge object is frozen by contextBridge).
 let remoteOverride = null
@@ -141,8 +161,8 @@ export function seek(ms) {
 
 export function setVolume(v) {
   P.volume = v
-  try { if (P.yt.audio) P.yt.audio.volume = v } catch {}
-  try { if (P.sc.widget) P.sc.widget.setVolume(v * 100) } catch {}
+  P.lastSpotifyVolume = v
+  applyLocalVolume(v)
   // Spotify device volume (ignored by devices that don't support it).
   SP().setVolume(Math.round(v * 100)).catch(() => {})
 }
@@ -176,7 +196,7 @@ function ensureYtAudio() {
   if (P.yt.audio) return P.yt.audio
   const el = new Audio()
   el.preload = 'auto'
-  el.volume = P.volume
+  el.volume = effectiveVolume()
   el.addEventListener('ended', () => P.local.playing && endLocal())
   el.addEventListener('playing', () => app().setPlayback({ playing: true }))
   el.addEventListener('pause', () => {
@@ -188,6 +208,9 @@ function ensureYtAudio() {
       endLocal()
     }
   })
+  // Kept in the DOM (hidden) so it can be inspected while debugging.
+  el.style.display = 'none'
+  document.body.appendChild(el)
   P.yt.audio = el
   return el
 }
@@ -226,7 +249,7 @@ async function startLocal(track) {
       const info = await window.songseek.search.resolveYoutubeStream(track.sourceId)
       if (token !== P.yt.token) return
       el.src = info.streamUrl
-      el.volume = P.volume
+      el.volume = effectiveVolume()
       if (info.durationMs) s.setPlayback({ durationMs: info.durationMs })
       await el.play()
     } else {
@@ -266,7 +289,7 @@ function playSoundcloud(track) {
     P.sc.widget = widget
     const E = window.SC.Widget.Events
     widget.bind(E.READY, () => {
-      widget.setVolume(P.volume * 100)
+      widget.setVolume(effectiveVolume() * 100)
       widget.play()
     })
     widget.bind(E.FINISH, () => P.local.playing && endLocal())
@@ -320,6 +343,16 @@ async function reconcile() {
 export function onSpotifyState(state) {
   const s = app()
   s.setSpotify(state)
+
+  // Track Spotify's level so a clip starting later matches it, and keep a clip
+  // that's already playing in step if the streamer changes it in Spotify.
+  if (typeof state.volumePercent === 'number' && state.volumePercent >= 0) {
+    const v = state.volumePercent / 100
+    if (P.lastSpotifyVolume !== v) {
+      P.lastSpotifyVolume = v
+      if (P.local.playing) applyLocalVolume(v)
+    }
+  }
 
   const uri = state.track && state.track.uri
   const boundary = P.lastSpotifyUri !== undefined && uri !== P.lastSpotifyUri

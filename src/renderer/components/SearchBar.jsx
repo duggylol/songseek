@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../state/store'
+import { allowedSources } from '../services/requests'
 import { searchTracks } from '../services/spotify'
 import { enqueue, playNow } from '../players/controller'
 import { fmtTime, SOURCE_META } from '../utils'
@@ -32,10 +33,15 @@ export default function SearchBar() {
     setBusy(true)
     const seq = ++seqRef.current
     const t = setTimeout(async () => {
+      const allow = allowedSources()
       const [spotify, youtube, soundcloud] = await Promise.all([
-        searchTracks(query, 4).catch(() => []),
-        window.songseek.search.youtube(query).then((r) => r.slice(0, 4)).catch(() => []),
-        window.songseek.search.soundcloud(query).then((r) => r.slice(0, 4)).catch(() => []),
+        allow.spotify ? searchTracks(query, 4).catch(() => []) : [],
+        allow.youtube
+          ? window.songseek.search.youtube(query).then((r) => r.slice(0, 4)).catch(() => [])
+          : [],
+        allow.soundcloud
+          ? window.songseek.search.soundcloud(query).then((r) => r.slice(0, 4)).catch(() => [])
+          : [],
       ])
       if (seq !== seqRef.current) return
       setResults({ spotify, youtube, soundcloud })

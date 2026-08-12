@@ -348,6 +348,34 @@ export default function SettingsModal() {
           </div>
         </section>
 
+        <section>
+          <h3>Request sources</h3>
+          <p className="section-desc">
+            Choose which platforms viewers can request from. Turning one off also hides it from search, and
+            links to it are politely declined in chat.
+          </p>
+          <Toggle
+            label="Spotify — queued in your Spotify app"
+            checked={settings.allowSpotify !== false}
+            onChange={(v) => patchSettings({ allowSpotify: v })}
+          />
+          <Toggle
+            label="YouTube — plays in SongSeek at Spotify's volume"
+            checked={settings.allowYoutube !== false}
+            onChange={(v) => patchSettings({ allowYoutube: v })}
+          />
+          <Toggle
+            label="SoundCloud — plays in SongSeek at Spotify's volume"
+            checked={settings.allowSoundcloud !== false}
+            onChange={(v) => patchSettings({ allowSoundcloud: v })}
+          />
+          {settings.allowSpotify === false &&
+            settings.allowYoutube === false &&
+            settings.allowSoundcloud === false && (
+              <p className="status err">All sources are off — no requests can be taken.</p>
+            )}
+        </section>
+
         <UpdateSection />
 
         <section>
