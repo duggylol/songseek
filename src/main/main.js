@@ -80,6 +80,8 @@ async function createWindow() {
   } catch (e) {
     console.error('[server] could not start:', e.message)
   }
+  // Refreshed every launch so the on-disk copy tracks app updates.
+  overlayFile = overlay.writeOverlayFile(app.getPath('userData'))
   if (process.env.VITE_DEV) {
     await win.loadURL('http://127.0.0.1:5173')
   } else if (port) {
@@ -103,15 +105,29 @@ const MIME = {
 
 let rendererServer = null
 let rendererPort = null
+let overlayFile = null
 
 // Tries the preferred port, then a few fallbacks. A busy port must never stop
-// the app from starting — it only changes the OBS overlay URL.
+// the app from starting — but moving ports breaks every OBS source pointed at
+// 43112, so we fight hard for it first: a relaunch often races the previous
+// instance's socket, which frees up a second or two later. Only give up on
+// 43112 after it stays busy, and remember that we moved so the UI can warn.
 async function serveRenderer() {
-  for (let port = 43112; port <= 43117; port++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      await listenOn(43112)
+      rendererPort = 43112
+      return 43112
+    } catch (e) {
+      if (!e || e.code !== 'EADDRINUSE') throw e
+      await new Promise((r) => setTimeout(r, 600))
+    }
+  }
+  for (let port = 43113; port <= 43117; port++) {
     try {
       await listenOn(port)
       rendererPort = port
-      if (port !== 43112) console.warn(`[server] port 43112 busy, using ${port}`)
+      console.warn(`[server] port 43112 stayed busy, using ${port}`)
       return port
     } catch (e) {
       if (e && e.code === 'EADDRINUSE') continue
@@ -262,7 +278,14 @@ function registerIpc() {
     return lines.join('\n')
   })
 
-  ipcMain.handle('app:info', () => ({ version: app.getVersion(), overlayUrl: overlayUrl() }))
+  ipcMain.handle('app:info', () => ({
+    version: app.getVersion(),
+    overlayUrl: overlayUrl(),
+    overlayFile,
+    // True when we lost 43112 and had to move — the user's existing OBS source
+    // is pointed at the old port and needs re-copying.
+    overlayPortMoved: rendererPort !== null && rendererPort !== 43112,
+  }))
   ipcMain.handle('update:state', () => updateState)
   ipcMain.handle('update:check', () => {
     checkForUpdates()
@@ -332,6 +355,11 @@ if (!gotLock) {
     // already the new version. Preventing the quit to call quitAndInstall
     // ourselves was unreliable — if it no-op'd, the app just never closed.
     if (control) control.stop()
+    // Free 43112 promptly so a quick relaunch gets it back instead of sliding
+    // to a fallback port and orphaning the user's OBS source. Overlay streams
+    // have to be dropped first or close() sits waiting on them.
+    try { overlay.closeAll() } catch {}
+    try { if (rendererServer) rendererServer.close() } catch {}
   })
   app.on('window-all-closed', () => app.quit())
 }

@@ -126,10 +126,16 @@ export default function SettingsModal() {
   const [busy, setBusy] = useState('')
   const [sim, setSim] = useState('')
   const [overlayUrl, setOverlayUrl] = useState('http://127.0.0.1:43112/overlay')
+  const [overlayFile, setOverlayFile] = useState('')
+  const [overlayMoved, setOverlayMoved] = useState(false)
   const [diag, setDiag] = useState('')
 
   useEffect(() => {
-    window.songseek.appInfo().then((i) => i.overlayUrl && setOverlayUrl(i.overlayUrl))
+    window.songseek.appInfo().then((i) => {
+      if (i.overlayUrl) setOverlayUrl(i.overlayUrl)
+      if (i.overlayFile) setOverlayFile(i.overlayFile)
+      setOverlayMoved(!!i.overlayPortMoved)
+    })
   }, [])
 
   const connectSpotify = async () => {
@@ -331,8 +337,32 @@ export default function SettingsModal() {
             <span className="dot-lg" style={{ background: '#8b7bff' }} /> Stream overlay (OBS)
           </h3>
           <p className="section-desc">
-            Add this link as a <b>Browser Source</b> in OBS (suggested size 800×160). A "now playing" card slides
-            in whenever a song starts and whenever someone uses <code>!song</code> in chat, then slides away.
+            Add this as a <b>Browser Source</b> in OBS (suggested size 800×160). A "now playing" card slides in
+            whenever a song starts and whenever someone uses <code>!song</code> in chat, then slides away.
+          </p>
+          {overlayFile && (
+            <>
+              <p className="section-desc" style={{ marginBottom: 6 }}>
+                <b>Recommended.</b> In the Browser Source, tick <b>Local file</b> and pick this file. It keeps
+                working no matter what order you open OBS and SongSeek in, and reconnects on its own after a
+                restart.
+              </p>
+              <div className="sim-row">
+                <input readOnly value={overlayFile} onFocus={(e) => e.target.select()} />
+                <button
+                  className="btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(overlayFile)
+                    toast('Overlay file path copied', 'success')
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            </>
+          )}
+          <p className="section-desc" style={{ marginTop: 14, marginBottom: 6 }}>
+            Or paste this URL instead — this one only works while SongSeek is already running.
           </p>
           <div className="sim-row">
             <input readOnly value={overlayUrl} onFocus={(e) => e.target.select()} />
@@ -346,6 +376,12 @@ export default function SettingsModal() {
               Copy
             </button>
           </div>
+          {overlayMoved && (
+            <p className="section-desc" style={{ color: '#ffb020', marginTop: 10 }}>
+              Another program was using SongSeek's usual port, so the overlay moved to {overlayUrl}. If your OBS
+              source has gone blank, re-copy the link above — or switch to the local file, which never moves.
+            </p>
+          )}
         </section>
 
         <section>

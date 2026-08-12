@@ -78,7 +78,7 @@
         { "@type": "Question", "name": "Can moderators skip songs from Twitch chat?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. Moderators and the broadcaster can use !skip, !pause, !play and !clearqueue directly in chat. Any viewer can use !song to see what is currently playing." } },
         { "@type": "Question", "name": "Is there an OBS now-playing overlay?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek serves an animated now-playing overlay you add to OBS as a Browser Source. The card slides in whenever a song starts and whenever a viewer uses !song, then slides away. It updates in real time." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek serves an animated now-playing overlay you add to OBS as a Browser Source. The card slides in whenever a song starts and whenever a viewer uses !song, then slides away. It updates in real time, and you only set it up once: the overlay reconnects on its own after a restart and works whichever order you open OBS and SongSeek in." } },
         { "@type": "Question", "name": "Is SongSeek free?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. SongSeek is free and open source under the MIT license, with no subscription, no watermark and no paid tier." } },
         { "@type": "Question", "name": "Does it work on Mac and Windows?",
@@ -271,13 +271,14 @@
     <div class="split-text">
       <p class="kicker reveal">OBS now-playing overlay</p>
       <h2 class="reveal">Show your viewers what's playing</h2>
-      <p class="reveal">SongSeek serves a ready-made <strong>now-playing overlay</strong> for OBS. Copy the link from Settings, add it as a <strong>Browser Source</strong>, and it starts working — no HTML to edit, no third-party service, no account.</p>
+      <p class="reveal">SongSeek serves a ready-made <strong>now-playing overlay</strong> for OBS. Copy it from Settings, add it as a <strong>Browser Source</strong>, and it starts working — no HTML to edit, no third-party service, no account.</p>
       <ul class="ticks reveal">
         <li>Slides in on every song change, then slides away</li>
         <li>Replays whenever a viewer types <code>!song</code></li>
         <li>Shows album art, title, artist and who requested it</li>
         <li>Transparent background — drops onto any scene</li>
         <li>Real-time updates, no refreshing or polling delay</li>
+        <li>Set it up once — it reconnects by itself, whatever order you open OBS and SongSeek in</li>
       </ul>
     </div>
     <figure class="split-media reveal">
