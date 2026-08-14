@@ -324,6 +324,10 @@ figcaption { margin-top: 13px; font-size: 13px; color: var(--muted-2); text-alig
 @media (max-width: 420px) { .nav-cta .ghost-btn { display: none; } }
 
 /* ---------- live download counter ---------- */
+/* `display` on the class beats the UA rule for the hidden attribute, so the
+   badge stayed on screen reading "0 downloads" whenever the count wasn't
+   available. It's meant to show nothing rather than a wrong number. */
+.dl-stat[hidden] { display: none; }
 .dl-stat {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 18px;
   padding: 8px 16px; border-radius: 999px;
