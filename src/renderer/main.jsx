@@ -5,6 +5,7 @@ import { useApp } from './state/store'
 import * as controller from './players/controller'
 import * as requests from './services/requests'
 import './styles.css'
+import './themes.css'
 
 // Internal handles for diagnostics/automation (local app; safe to expose).
 window.__songseekStore = useApp

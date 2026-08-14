@@ -41,10 +41,22 @@ const mapTrack = (t) => ({
   durationMs: t.duration_ms,
 })
 
+// `market=from_token` resolves the country from the account, but Spotify gates
+// that on the user-read-private scope — which SongSeek deliberately does not
+// request. Asking for it would buy nothing else, and sending from_token without
+// it makes Spotify reject the entire call with "Insufficient client scope", so
+// every catalogue search came back empty. Drop the market instead: results stay
+// queueable by URI, which is all we do with them.
+const stripMarket = (p) =>
+  p
+    .replace(/&market=\{market\}/g, '')
+    .replace(/\?market=\{market\}&/g, '?')
+    .replace(/\?market=\{market\}/g, '')
+
 async function api(store, pathname, marketToken) {
   // Signed in? Use the user's token — no secret required.
   if (store.get('spotifyLibraryTokens')) {
-    return account.request(store, 'GET', pathname.replace('{market}', 'from_token'))
+    return account.request(store, 'GET', stripMarket(pathname))
   }
   const token = await getAppToken(store)
   if (!token) {

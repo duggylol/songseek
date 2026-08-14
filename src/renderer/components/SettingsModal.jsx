@@ -2,148 +2,124 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../state/store'
 import { handleIncomingRequest } from '../services/requests'
+import { THEMES, DEFAULT_THEME } from '../themes'
 
-function TextField({ label, value, onSave, placeholder, hint }) {
-  const [v, setV] = useState(value || '')
+/* ---------------- small building blocks ---------------- */
+
+// One setting = one row. Label on the left, control on the right.
+function Row({ label, sub, children }) {
   return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        value={v}
-        placeholder={placeholder}
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => v !== (value || '') && onSave(v.trim())}
-        onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-      />
-      {hint && <em className="hint">{hint}</em>}
-    </label>
+    <div className="row">
+      <div className="row-text">
+        <div className="row-label">{label}</div>
+        {sub && <div className="row-sub">{sub}</div>}
+      </div>
+      <div className="row-control">{children}</div>
+    </div>
   )
 }
 
-function Toggle({ label, checked, onChange }) {
+function Toggle({ checked, onChange }) {
   return (
     <label className="toggle">
       <input type="checkbox" checked={!!checked} onChange={(e) => onChange(e.target.checked)} />
       <span className="toggle-track"><span className="toggle-thumb" /></span>
-      {label}
     </label>
+  )
+}
+
+function Input({ value, onSave, placeholder, width }) {
+  const [v, setV] = useState(value || '')
+  useEffect(() => setV(value || ''), [value])
+  return (
+    <input
+      type="text"
+      value={v}
+      placeholder={placeholder}
+      style={width ? { width } : undefined}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => v !== (value || '') && onSave(v.trim())}
+      onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+    />
+  )
+}
+
+// The value is never rendered — the label says what it is, the button copies it.
+function CopyButton({ value, label = 'Copy', onCopied }) {
+  const [done, setDone] = useState(false)
+  return (
+    <button
+      className={`copy-btn ${done ? 'done' : ''}`}
+      disabled={!value}
+      onClick={() => {
+        navigator.clipboard.writeText(value || '')
+        setDone(true)
+        onCopied && onCopied()
+        setTimeout(() => setDone(false), 1600)
+      }}
+    >
+      {done ? (
+        <>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          Copied
+        </>
+      ) : (
+        <>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" />
+          </svg>
+          {label}
+        </>
+      )}
+    </button>
   )
 }
 
 function Ext({ href, children }) {
   return (
-    <a
-      href="#"
-      onClick={(e) => {
-        e.preventDefault()
-        window.songseek.openExternal(href)
-      }}
-    >
+    <a href="#" onClick={(e) => { e.preventDefault(); window.songseek.openExternal(href) }}>
       {children}
     </a>
   )
 }
 
-function UpdateSection() {
-  const [u, setU] = useState({ currentVersion: '', status: 'idle', supported: false })
-  const toast = useApp((s) => s.toast)
+/* ---------------- tabs ---------------- */
 
-  useEffect(() => {
-    window.songseek.update.state().then(setU)
-    return window.songseek.update.onState(setU)
-  }, [])
+const TABS = [
+  {
+    id: 'connections', label: 'Connections',
+    icon: <path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8" />,
+  },
+  {
+    id: 'requests', label: 'Requests',
+    icon: <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>,
+  },
+  {
+    id: 'overlay', label: 'Overlay',
+    icon: <><rect x="2" y="4" width="20" height="15" rx="2" /><path d="M2 10h20" /></>,
+  },
+  {
+    id: 'appearance', label: 'Appearance',
+    icon: <><circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18 4.5 4.5 0 0 0 0-9 4.5 4.5 0 0 1 0-9z" /></>,
+  },
+  {
+    id: 'about', label: 'About',
+    icon: <><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></>,
+  },
+]
 
-  const line = () => {
-    switch (u.status) {
-      case 'checking': return 'Checking for updates…'
-      case 'downloading': return `Downloading update ${u.version || ''} — ${u.percent || 0}%`
-      case 'ready': return `Update ${u.version} ready — it installs when you close SongSeek`
-      case 'current': return "You're on the latest version"
-      case 'error': return `Update check failed: ${u.error}`
-      case 'unsupported': return 'Automatic updates run on Windows; on macOS download new versions manually'
-      default: return 'Updates install automatically in the background'
-    }
-  }
+/* ---------------- panels ---------------- */
 
-  return (
-    <section>
-      <h3>About &amp; updates</h3>
-      <div className="version-row">
-        <span className="version-badge">SongSeek v{u.currentVersion || '—'}</span>
-        <span className={`status ${u.status === 'error' ? 'err' : u.status === 'ready' ? 'ok' : ''}`}>{line()}</span>
-      </div>
-      {u.status === 'downloading' && (
-        <div className="progress-bar"><span style={{ width: `${u.percent || 0}%` }} /></div>
-      )}
-      <div className="connect-row">
-        {u.status === 'ready' ? (
-          <button className="btn" onClick={() => window.songseek.update.install()}>
-            Restart &amp; install now
-          </button>
-        ) : (
-          <button
-            className="btn subtle"
-            disabled={!u.supported || u.status === 'checking' || u.status === 'downloading'}
-            onClick={async () => {
-              await window.songseek.update.check()
-              toast('Checking for updates…', 'info')
-            }}
-          >
-            Check for updates
-          </button>
-        )}
-        <Ext href="https://github.com/duggylol/songseek/releases">Release notes</Ext>
-      </div>
-    </section>
-  )
-}
-
-function SetupAgain() {
-  const patchSettings = useApp((s) => s.patchSettings)
-  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
-  return (
-    <button
-      className="btn subtle"
-      onClick={async () => {
-        await patchSettings({ setupComplete: false })
-        setSettingsOpen(false)
-      }}
-    >
-      Run setup guide
-    </button>
-  )
-}
-
-export default function SettingsModal() {
-  const settings = useApp((s) => s.settings) || {}
-  const patchSettings = useApp((s) => s.patchSettings)
-  const spotify = useApp((s) => s.spotify)
-  const twitch = useApp((s) => s.twitch)
-  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
-  const setSpotify = useApp((s) => s.setSpotify)
-  const setTwitch = useApp((s) => s.setTwitch)
-  const toast = useApp((s) => s.toast)
+function ConnectionsPanel({ ctx }) {
+  const { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, toast } = ctx
   const [busy, setBusy] = useState('')
-  const [sim, setSim] = useState('')
-  const [overlayUrl, setOverlayUrl] = useState('http://127.0.0.1:43112/overlay')
-  const [overlayFile, setOverlayFile] = useState('')
-  const [overlayMoved, setOverlayMoved] = useState(false)
   const [diag, setDiag] = useState('')
-
-  useEffect(() => {
-    window.songseek.appInfo().then((i) => {
-      if (i.overlayUrl) setOverlayUrl(i.overlayUrl)
-      if (i.overlayFile) setOverlayFile(i.overlayFile)
-      setOverlayMoved(!!i.overlayPortMoved)
-    })
-  }, [])
 
   const connectSpotify = async () => {
     setBusy('spotify')
     try {
-      const st = await window.songseek.spotify.connect()
-      setSpotify(st)
-      toast('Spotify connected — keep the Spotify app open and playing.', 'success')
+      setSpotify(await window.songseek.spotify.connect())
+      toast('Spotify connected — keep the Spotify app open.', 'success')
     } catch (e) {
       toast(e.message.replace(/^Error invoking .*?: /, ''), 'error')
     }
@@ -162,6 +138,348 @@ export default function SettingsModal() {
     setBusy('')
   }
 
+  const spotifyState = !spotify.connected
+    ? { badge: 'Not connected', cls: 'off' }
+    : spotify.needsReconnect
+      ? { badge: 'Action needed', cls: '' }
+      : { badge: 'Connected', cls: 'ok' }
+
+  return (
+    <>
+      <h3>Accounts</h3>
+
+      <div className="card">
+        <div className="card-head">
+          <span className="dot-lg" style={{ background: '#1DB954' }} />
+          <span className="card-title">Spotify</span>
+          <span className={`badge ${spotifyState.cls}`}>{spotifyState.badge}</span>
+        </div>
+        <p className="card-note">
+          {spotify.connected && !spotify.needsReconnect
+            ? `${spotify.user ? spotify.user.name : 'Signed in'}${spotify.hasDevice ? ` · controlling ${spotify.deviceName || 'Spotify'}` : ' · open Spotify to control it'}`
+            : 'Requests go into your Spotify queue, so your playlist keeps going. Premium required.'}
+        </p>
+        <div className="card-actions">
+          {spotify.connected ? (
+            <>
+              {spotify.needsReconnect && (
+                <button className="btn" disabled={busy === 'spotify'} onClick={connectSpotify}>
+                  {busy === 'spotify' ? 'Waiting for browser…' : 'Reconnect'}
+                </button>
+              )}
+              <button className="btn subtle" onClick={() => window.songseek.spotify.disconnect().then(setSpotify)}>
+                Disconnect
+              </button>
+            </>
+          ) : (
+            <button className="btn" disabled={busy === 'spotify'} onClick={connectSpotify}>
+              {busy === 'spotify' ? 'Waiting for browser…' : 'Connect Spotify'}
+            </button>
+          )}
+          <button
+            className="btn subtle"
+            onClick={async () => {
+              setDiag('Testing…')
+              try { setDiag(await window.songseek.spotify.diagnose()) } catch (e) { setDiag(String(e.message || e)) }
+            }}
+          >
+            Test connection
+          </button>
+        </div>
+        {diag && <pre className="diag">{diag}</pre>}
+
+        <details className="advanced">
+          <summary>Use your own Spotify app</summary>
+          <ol className="steps-mini">
+            <li>Open the <Ext href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</Ext> → <b>Create app</b>.</li>
+            <li>Add the redirect URI below, tick <b>Web API</b>, save.</li>
+            <li>Paste the app's Client ID here.</li>
+          </ol>
+          <Row label="Redirect URI" sub="Paste this into your Spotify app">
+            <CopyButton value="http://127.0.0.1:8888" onCopied={() => toast('Redirect URI copied', 'success')} />
+          </Row>
+          <Row label="Your Client ID" sub="Leave empty to use the built-in app">
+            <Input
+              value={settings.spotifyUserClientId}
+              placeholder="paste here"
+              onSave={async (v) => {
+                if (v === (settings.spotifyUserClientId || '')) return
+                await window.songseek.spotify.disconnect().then(setSpotify).catch(() => {})
+                await patchSettings({ spotifyUserClientId: v })
+                toast(v ? 'Saved — now click Connect Spotify' : 'Back to the built-in Spotify app', 'success')
+              }}
+            />
+          </Row>
+        </details>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <span className="dot-lg" style={{ background: '#9146FF' }} />
+          <span className="card-title">Twitch</span>
+          <span className={`badge ${twitch.connected ? 'ok' : 'off'}`}>
+            {twitch.connected ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+        <p className="card-note">
+          {twitch.connected
+            ? `Listening to ${twitch.user ? twitch.user.login : 'your channel'}'s chat and redemptions.`
+            : 'Channel points need Affiliate or Partner — the chat command works on any channel.'}
+        </p>
+        <div className="card-actions">
+          {twitch.connected ? (
+            <button className="btn subtle" onClick={() => window.songseek.twitch.disconnect().then(setTwitch)}>
+              Disconnect
+            </button>
+          ) : (
+            <button className="btn" disabled={busy === 'twitch' || !settings.twitchClientId} onClick={connectTwitch}>
+              {busy === 'twitch' ? 'Waiting for browser…' : 'Connect Twitch'}
+            </button>
+          )}
+        </div>
+        {twitch.error && <p className="card-note status err">{twitch.error}</p>}
+
+        {!(settings._bundled && settings._bundled.twitch) && (
+          <details className="advanced" open={!settings.twitchClientId}>
+            <summary>Twitch app setup</summary>
+            <ol className="steps-mini">
+              <li>Register a <b>Public</b> app in the <Ext href="https://dev.twitch.tv/console/apps">Twitch Developer Console</Ext>.</li>
+              <li>Use the redirect URL below, then paste the Client ID.</li>
+            </ol>
+            <Row label="OAuth Redirect URL" sub="Paste this into your Twitch app">
+              <CopyButton value="http://localhost:43111" onCopied={() => toast('Redirect URL copied', 'success')} />
+            </Row>
+            <Row label="Client ID">
+              <Input value={settings.twitchClientId} placeholder="paste here" onSave={(v) => patchSettings({ twitchClientId: v })} />
+            </Row>
+          </details>
+        )}
+      </div>
+    </>
+  )
+}
+
+function RequestsPanel({ ctx }) {
+  const { settings, patchSettings } = ctx
+  const allOff =
+    settings.allowSpotify === false && settings.allowYoutube === false && settings.allowSoundcloud === false
+
+  return (
+    <>
+      <h3>How viewers request</h3>
+      <div className="card">
+        <Row label="Channel point reward" sub="Must match the reward title on your channel exactly">
+          <Input value={settings.rewardName} placeholder="Song Request" onSave={(v) => patchSettings({ rewardName: v })} width={150} />
+        </Row>
+        <Row label="Chat command" sub="Works without Affiliate">
+          {settings.chatCommandEnabled && (
+            <Input value={settings.chatCommand} placeholder="!sr" onSave={(v) => patchSettings({ chatCommand: v })} width={78} />
+          )}
+          <Toggle checked={settings.chatCommandEnabled} onChange={(v) => patchSettings({ chatCommandEnabled: v })} />
+        </Row>
+        <Row label="Announce in chat" sub="Confirm each request as it's queued">
+          <Toggle checked={settings.chatAnnounce} onChange={(v) => patchSettings({ chatAnnounce: v })} />
+        </Row>
+        <Row label="Mod commands" sub="!skip !pause !play !clearqueue — and !song for everyone">
+          <Toggle checked={settings.modCommandsEnabled} onChange={(v) => patchSettings({ modCommandsEnabled: v })} />
+        </Row>
+      </div>
+
+      <h3>Allowed sources</h3>
+      <div className="card">
+        <Row label="Spotify" sub="Queued in your Spotify app">
+          <Toggle checked={settings.allowSpotify !== false} onChange={(v) => patchSettings({ allowSpotify: v })} />
+        </Row>
+        <Row label="YouTube" sub="Plays in SongSeek, matched to Spotify's volume">
+          <Toggle checked={settings.allowYoutube !== false} onChange={(v) => patchSettings({ allowYoutube: v })} />
+        </Row>
+        <Row label="SoundCloud" sub="Plays in SongSeek, matched to Spotify's volume">
+          <Toggle checked={settings.allowSoundcloud !== false} onChange={(v) => patchSettings({ allowSoundcloud: v })} />
+        </Row>
+        {allOff && <div className="note">All sources are off — no requests can be taken.</div>}
+      </div>
+    </>
+  )
+}
+
+function OverlayPanel({ ctx }) {
+  const { toast } = ctx
+  const [info, setInfo] = useState({ overlayUrl: '', overlayFile: '', overlayPortMoved: false })
+
+  useEffect(() => { window.songseek.appInfo().then(setInfo) }, [])
+
+  return (
+    <>
+      <h3>OBS browser source</h3>
+      <div className="card">
+        <p className="card-note" style={{ marginTop: 0 }}>
+          Add a <b>Browser Source</b> in OBS at roughly 800×160. A now-playing card slides in on every song and
+          on <code>!song</code>.
+        </p>
+        <Row label="Overlay file" sub="Recommended — tick “Local file” in OBS and pick it">
+          <CopyButton value={info.overlayFile} label="Copy path" onCopied={() => toast('Overlay file path copied', 'success')} />
+        </Row>
+        <Row label="Overlay link" sub="Only works while SongSeek is running">
+          <CopyButton value={info.overlayUrl} label="Copy link" onCopied={() => toast('Overlay link copied', 'success')} />
+        </Row>
+        {info.overlayPortMoved && (
+          <div className="note">
+            Another program took SongSeek's usual port, so the link changed. Re-copy it, or switch to the file —
+            that one never moves.
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function AppearancePanel({ ctx }) {
+  const { settings, patchSettings } = ctx
+  const current = settings.theme || DEFAULT_THEME
+
+  return (
+    <>
+      <h3>Theme</h3>
+      <div className="theme-grid">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            className={`theme-card ${current === t.id ? 'on' : ''}`}
+            onClick={() => patchSettings({ theme: t.id })}
+          >
+            <div className="theme-prev" style={{ background: t.prev.bg }}>
+              {t.prev.fx && <span className={`theme-prev-fx fx-${t.prev.fx}`} />}
+              <span className="theme-prev-ui">
+                <b style={{ background: t.prev.accent }} />
+                <i style={{ background: t.prev.bar }} />
+                <i style={{ background: t.prev.accent, flex: '0 0 22px' }} />
+              </span>
+              {current === t.id && (
+                <span className="theme-check">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                </span>
+              )}
+            </div>
+            <div className="theme-meta">
+              <span className="theme-name">{t.name}</span>
+              {t.animated && <span className="theme-anim">Animated</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+      <p className="card-note">Animated themes use transform-only effects, so they stay light while you stream.</p>
+    </>
+  )
+}
+
+function AboutPanel({ ctx }) {
+  const { toast, patchSettings, setSettingsOpen } = ctx
+  const [u, setU] = useState({ currentVersion: '', status: 'idle', supported: false })
+  const [sim, setSim] = useState('')
+
+  useEffect(() => {
+    window.songseek.update.state().then(setU)
+    return window.songseek.update.onState(setU)
+  }, [])
+
+  const line = () => {
+    switch (u.status) {
+      case 'checking': return 'Checking…'
+      case 'downloading': return `Downloading ${u.version || ''} — ${u.percent || 0}%`
+      case 'ready': return `${u.version} ready — installs next time you open SongSeek`
+      case 'current': return "You're up to date"
+      case 'error': return `Check failed: ${u.error}`
+      case 'unsupported': return 'Automatic on Windows; download manually on macOS'
+      default: return 'Updates install on startup, before SongSeek opens'
+    }
+  }
+
+  const send = () => {
+    if (!sim.trim()) return
+    handleIncomingRequest({ user: 'TestViewer', input: sim.trim(), via: 'test' })
+    setSim('')
+  }
+
+  return (
+    <>
+      <h3>Version</h3>
+      <div className="card">
+        <div className="version-row">
+          <span className="version-badge">v{u.currentVersion || '—'}</span>
+          <span className={`status ${u.status === 'error' ? 'err' : u.status === 'ready' ? 'ok' : ''}`}>{line()}</span>
+        </div>
+        {u.status === 'downloading' && (
+          <div className="progress-bar"><span style={{ width: `${u.percent || 0}%` }} /></div>
+        )}
+        <div className="card-actions">
+          {u.status === 'ready' ? (
+            <button className="btn" onClick={() => window.songseek.update.install()}>Restart &amp; install</button>
+          ) : (
+            <button
+              className="btn subtle"
+              disabled={!u.supported || u.status === 'checking' || u.status === 'downloading'}
+              onClick={async () => { await window.songseek.update.check(); toast('Checking for updates…', 'info') }}
+            >
+              Check for updates
+            </button>
+          )}
+          <button
+            className="btn subtle"
+            onClick={async () => { await patchSettings({ setupComplete: false }); setSettingsOpen(false) }}
+          >
+            Run setup guide
+          </button>
+          <Ext href="https://github.com/duggylol/songseek/releases">Release notes</Ext>
+        </div>
+      </div>
+
+      <h3>Test a request</h3>
+      <div className="card">
+        <p className="card-note" style={{ marginTop: 0 }}>Queue something as if a viewer asked for it.</p>
+        <div className="sim-row">
+          <input
+            value={sim}
+            placeholder="song name or link"
+            onChange={(e) => setSim(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+          />
+          <button className="btn" disabled={!sim.trim()} onClick={send}>Send</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+const PANELS = {
+  connections: ConnectionsPanel,
+  requests: RequestsPanel,
+  overlay: OverlayPanel,
+  appearance: AppearancePanel,
+  about: AboutPanel,
+}
+
+/* ---------------- shell ---------------- */
+
+export default function SettingsModal() {
+  const settings = useApp((s) => s.settings) || {}
+  const patchSettings = useApp((s) => s.patchSettings)
+  const spotify = useApp((s) => s.spotify)
+  const twitch = useApp((s) => s.twitch)
+  const setSettingsOpen = useApp((s) => s.setSettingsOpen)
+  const setSpotify = useApp((s) => s.setSpotify)
+  const setTwitch = useApp((s) => s.setTwitch)
+  const toast = useApp((s) => s.toast)
+  const [tab, setTab] = useState('connections')
+
+  // A dot on the tab that actually needs attention, so nothing has to be
+  // explained in prose.
+  const needsAttention = {
+    connections: !spotify.connected || spotify.needsReconnect || !twitch.connected,
+  }
+
+  const ctx = { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, toast, setSettingsOpen }
+  const Panel = PANELS[tab]
+
   return (
     <motion.div
       className="modal-overlay"
@@ -172,9 +490,9 @@ export default function SettingsModal() {
     >
       <motion.div
         className="modal"
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 22, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.98 }}
+        exit={{ opacity: 0, y: 14, scale: 0.985 }}
         transition={{ type: 'spring', stiffness: 380, damping: 32 }}
       >
         <div className="modal-header">
@@ -184,263 +502,32 @@ export default function SettingsModal() {
           </button>
         </div>
 
-        <section>
-          <h3>
-            <span className="dot-lg" style={{ background: '#1DB954' }} /> Spotify
-          </h3>
-          <p className="section-desc">
-            SongSeek <b>controls your Spotify app</b> — it doesn't play audio itself. Keep Spotify open and
-            playing; requests go into its queue, so whatever playlist you're on carries on afterwards.
-            Spotify <b>Premium</b> is required. Your login is stored only on this computer.
-          </p>
-          <div className="connect-row">
-            {spotify.connected ? (
-              <>
-                <span className={`status ${spotify.needsReconnect ? 'err' : 'ok'}`}>
-                  {spotify.needsReconnect
-                    ? 'Reconnect to allow playback control'
-                    : `Connected${spotify.user ? ` as ${spotify.user.name}` : ''}${
-                        spotify.hasDevice ? ` · controlling ${spotify.deviceName || 'Spotify'}` : ' · open Spotify to control it'
-                      }`}
+        <div className="set-body">
+          <nav className="set-rail">
+            {TABS.map((t) => (
+              <button key={t.id} className={`set-tab ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)}>
+                <span className="set-tab-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    {t.icon}
+                  </svg>
+                  {t.label}
+                  {needsAttention[t.id] && <span className="set-tab-warn" />}
                 </span>
-                {spotify.needsReconnect && (
-                  <button className="btn" disabled={busy === 'spotify'} onClick={connectSpotify}>
-                    {busy === 'spotify' ? 'Waiting for browser…' : 'Reconnect'}
-                  </button>
-                )}
-                <button className="btn subtle" onClick={() => window.songseek.spotify.disconnect().then(setSpotify)}>
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <button className="btn" disabled={busy === 'spotify'} onClick={connectSpotify}>
-                {busy === 'spotify' ? 'Waiting for browser…' : 'Connect Spotify'}
               </button>
-            )}
+            ))}
+          </nav>
+
+          {/* The keyed div remounts per tab and replays a CSS fade-in. This is
+              deliberately plain CSS rather than a nested motion component:
+              motion children mounting inside the modal blocked AnimatePresence
+              from ever finishing the modal's exit, so Settings stayed on screen
+              after being closed. */}
+          <div className="set-panel">
+            <div className="set-panel-in" key={tab}>
+              <Panel ctx={ctx} />
+            </div>
           </div>
-
-          <div className="connect-row">
-            <SetupAgain />
-            <button
-              className="btn subtle"
-              onClick={async () => {
-                setDiag('Testing…')
-                try {
-                  setDiag(await window.songseek.spotify.diagnose())
-                } catch (e) {
-                  setDiag(String(e.message || e))
-                }
-              }}
-            >
-              Test Spotify connection
-            </button>
-          </div>
-          {diag && <pre className="diag">{diag}</pre>}
-
-          <details className="advanced">
-            <summary>Can't connect? Use your own Spotify app</summary>
-            <p className="section-desc">
-              Spotify limits the built-in app to a handful of approved accounts. To skip that, make your own
-              (free, ~3 minutes) — you'll be its owner, so no approval is needed:
-            </p>
-            <ol className="steps-mini">
-              <li>Open the <Ext href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</Ext> and click <b>Create app</b>.</li>
-              <li>Name it anything. Under <b>Redirect URIs</b> add exactly <code>http://127.0.0.1:8888</code></li>
-              <li>Tick <b>Web API</b>, save, then copy the app's <b>Client ID</b> below.</li>
-            </ol>
-            <TextField
-              label="Your Spotify Client ID"
-              value={settings.spotifyUserClientId}
-              placeholder="leave empty to use the built-in app"
-              hint="Changing this signs you out of Spotify so you can log in again with your own app."
-              onSave={async (v) => {
-                if (v === (settings.spotifyUserClientId || '')) return
-                await window.songseek.spotify.disconnect().then(setSpotify).catch(() => {})
-                await patchSettings({ spotifyUserClientId: v })
-                toast(v ? 'Saved — now click Connect Spotify' : 'Back to the built-in Spotify app', 'success')
-              }}
-            />
-          </details>
-        </section>
-
-        <section>
-          <h3>
-            <span className="dot-lg" style={{ background: '#9146FF' }} /> Twitch
-          </h3>
-          {settings._bundled && settings._bundled.twitch ? (
-            <p className="section-desc">
-              Just click connect and log in with your Twitch account. Channel points need
-              Affiliate/Partner — the chat command works for everyone.
-            </p>
-          ) : (
-            <>
-              <p className="section-desc">
-                Register a <b>Public</b> app in the{' '}
-                <Ext href="https://dev.twitch.tv/console/apps">Twitch Developer Console</Ext> with OAuth Redirect URL{' '}
-                <code>http://localhost:43111</code>, then paste its Client ID. Channel points need Affiliate/Partner.
-              </p>
-              <TextField
-                label="Client ID"
-                value={settings.twitchClientId}
-                placeholder="e.g. gp762n…"
-                onSave={(v) => patchSettings({ twitchClientId: v })}
-              />
-            </>
-          )}
-          <div className="connect-row">
-            {twitch.connected ? (
-              <>
-                <span className="status ok">Connected{twitch.user ? ` as ${twitch.user.login}` : ''}</span>
-                <button className="btn subtle" onClick={() => window.songseek.twitch.disconnect().then(setTwitch)}>
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <button className="btn" disabled={busy === 'twitch' || !settings.twitchClientId} onClick={connectTwitch}>
-                {busy === 'twitch' ? 'Waiting for browser…' : 'Connect Twitch'}
-              </button>
-            )}
-          </div>
-          {twitch.error && <div className="status err">{twitch.error}</div>}
-
-          <TextField
-            label="Channel point reward name"
-            value={settings.rewardName}
-            placeholder="Song Request"
-            hint="Must exactly match the reward title on your channel (create it with 'Require viewer to enter text' enabled)."
-            onSave={(v) => patchSettings({ rewardName: v })}
-          />
-          <div className="field-row">
-            <Toggle
-              label="Also accept a chat command"
-              checked={settings.chatCommandEnabled}
-              onChange={(v) => patchSettings({ chatCommandEnabled: v })}
-            />
-            {settings.chatCommandEnabled && (
-              <TextField label="" value={settings.chatCommand} placeholder="!sr" onSave={(v) => patchSettings({ chatCommand: v })} />
-            )}
-          </div>
-          <Toggle
-            label="Announce queue updates in chat"
-            checked={settings.chatAnnounce}
-            onChange={(v) => patchSettings({ chatAnnounce: v })}
-          />
-          <Toggle
-            label="Mods can control playback in chat (!skip, !pause, !play, !clearqueue — plus !song for everyone)"
-            checked={settings.modCommandsEnabled}
-            onChange={(v) => patchSettings({ modCommandsEnabled: v })}
-          />
-        </section>
-
-        <section>
-          <h3>
-            <span className="dot-lg" style={{ background: '#8b7bff' }} /> Stream overlay (OBS)
-          </h3>
-          <p className="section-desc">
-            Add this as a <b>Browser Source</b> in OBS (suggested size 800×160). A "now playing" card slides in
-            whenever a song starts and whenever someone uses <code>!song</code> in chat, then slides away.
-          </p>
-          {overlayFile && (
-            <>
-              <p className="section-desc" style={{ marginBottom: 6 }}>
-                <b>Recommended.</b> In the Browser Source, tick <b>Local file</b> and pick this file. It keeps
-                working no matter what order you open OBS and SongSeek in, and reconnects on its own after a
-                restart.
-              </p>
-              <div className="sim-row">
-                <input readOnly value={overlayFile} onFocus={(e) => e.target.select()} />
-                <button
-                  className="btn"
-                  onClick={() => {
-                    navigator.clipboard.writeText(overlayFile)
-                    toast('Overlay file path copied', 'success')
-                  }}
-                >
-                  Copy
-                </button>
-              </div>
-            </>
-          )}
-          <p className="section-desc" style={{ marginTop: 14, marginBottom: 6 }}>
-            Or paste this URL instead — this one only works while SongSeek is already running.
-          </p>
-          <div className="sim-row">
-            <input readOnly value={overlayUrl} onFocus={(e) => e.target.select()} />
-            <button
-              className="btn"
-              onClick={() => {
-                navigator.clipboard.writeText(overlayUrl)
-                toast('Overlay link copied', 'success')
-              }}
-            >
-              Copy
-            </button>
-          </div>
-          {overlayMoved && (
-            <p className="section-desc" style={{ color: '#ffb020', marginTop: 10 }}>
-              Another program was using SongSeek's usual port, so the overlay moved to {overlayUrl}. If your OBS
-              source has gone blank, re-copy the link above — or switch to the local file, which never moves.
-            </p>
-          )}
-        </section>
-
-        <section>
-          <h3>Request sources</h3>
-          <p className="section-desc">
-            Choose which platforms viewers can request from. Turning one off also hides it from search, and
-            links to it are politely declined in chat.
-          </p>
-          <Toggle
-            label="Spotify — queued in your Spotify app"
-            checked={settings.allowSpotify !== false}
-            onChange={(v) => patchSettings({ allowSpotify: v })}
-          />
-          <Toggle
-            label="YouTube — plays in SongSeek at Spotify's volume"
-            checked={settings.allowYoutube !== false}
-            onChange={(v) => patchSettings({ allowYoutube: v })}
-          />
-          <Toggle
-            label="SoundCloud — plays in SongSeek at Spotify's volume"
-            checked={settings.allowSoundcloud !== false}
-            onChange={(v) => patchSettings({ allowSoundcloud: v })}
-          />
-          {settings.allowSpotify === false &&
-            settings.allowYoutube === false &&
-            settings.allowSoundcloud === false && (
-              <p className="status err">All sources are off — no requests can be taken.</p>
-            )}
-        </section>
-
-        <UpdateSection />
-
-        <section>
-          <h3>Test</h3>
-          <p className="section-desc">Simulate an incoming request without Twitch (song name or link):</p>
-          <div className="sim-row">
-            <input
-              value={sim}
-              placeholder="e.g. daft punk around the world"
-              onChange={(e) => setSim(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && sim.trim()) {
-                  handleIncomingRequest({ user: 'TestViewer', input: sim.trim(), via: 'test' })
-                  setSim('')
-                }
-              }}
-            />
-            <button
-              className="btn"
-              disabled={!sim.trim()}
-              onClick={() => {
-                handleIncomingRequest({ user: 'TestViewer', input: sim.trim(), via: 'test' })
-                setSim('')
-              }}
-            >
-              Send
-            </button>
-          </div>
-        </section>
+        </div>
       </motion.div>
     </motion.div>
   )

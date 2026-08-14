@@ -11,6 +11,7 @@ import SearchBar from './components/SearchBar'
 import SettingsModal from './components/SettingsModal'
 import Onboarding from './components/Onboarding'
 import Toasts from './components/Toasts'
+import { DEFAULT_THEME } from './themes'
 
 function Background() {
   const art = useApp((s) => {
@@ -33,14 +34,27 @@ function Background() {
         )}
       </AnimatePresence>
       <div className="bg-vignette" />
+      {/* Animated themes paint into this layer; static ones leave it empty.
+          It sits above the vignette so the effect isn't washed out by it. */}
+      <div className="theme-fx" />
     </div>
   )
+}
+
+// Themes are a document-level attribute so every layer — including portals and
+// the modal — picks them up from one place.
+function useTheme() {
+  const theme = useApp((s) => (s.settings && s.settings.theme) || DEFAULT_THEME)
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 }
 
 export default function App() {
   const settingsOpen = useApp((s) => s.settingsOpen)
   // Shown until the user finishes (or skips) setup.
   const showSetup = useApp((s) => !!s.settings && !s.settings.setupComplete)
+  useTheme()
 
   useEffect(() => {
     const st = useApp.getState()
@@ -67,7 +81,7 @@ export default function App() {
         window.songseek.twitch.onCommand(handleChatCommand),
         window.songseek.twitch.onStatus((s) => st.setTwitch(s)),
         window.songseek.onUpdateReady(({ version }) =>
-          st.toast(`Update ${version} downloaded — it installs when you close SongSeek`, 'success')
+          st.toast(`Update ${version} ready — it installs next time you open SongSeek`, 'success')
         ),
         window.songseek.spotify.onStatus((s) => {
           st.setSpotify(s)

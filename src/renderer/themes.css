@@ -1,0 +1,240 @@
+/* ============================================================
+   Themes. Each one only redefines tokens; the animated ones add
+   a cheap FX layer on top of the ambient background.
+
+   Animation rule: transform and opacity only. Blurs are set once
+   and never animated, so each layer composites on the GPU and the
+   app stays light enough to run alongside OBS.
+   ============================================================ */
+
+/* ---------- 1. Midnight (default) — violet on near-black ---------- */
+[data-theme='midnight'] {
+  --art-glow: 0.5;
+}
+
+/* ---------- 2. Verdant — the classic Spotify green ---------- */
+[data-theme='verdant'] {
+  --bg: #0b0f0c;
+  --bg-deep: #050806;
+  --rail: rgba(18, 24, 20, 0.66);
+  --stage: rgba(18, 24, 20, 0.42);
+  --modal: rgba(19, 26, 21, 0.98);
+  --accent: #1ed760;
+  --accent-2: #14a34a;
+  --on-accent: #06120a;
+  --ok: #1ed760;
+  --art-glow: 0.45;
+}
+
+/* ---------- 3. Aurora (animated) — polar light over deep navy ---------- */
+[data-theme='aurora'] {
+  --bg: #050b16;
+  --bg-deep: #02060d;
+  --rail: rgba(13, 26, 42, 0.62);
+  --stage: rgba(13, 26, 42, 0.38);
+  --modal: rgba(12, 24, 38, 0.98);
+  --accent: #3fe0c8;
+  --accent-2: #4b8cff;
+  --on-accent: #04120f;
+  --ok: #3fe0c8;
+  --art-glow: 0.7;
+}
+[data-theme='aurora'] .theme-fx::before,
+[data-theme='aurora'] .theme-fx::after {
+  content: '';
+  position: absolute;
+  width: 78vw; height: 60vh;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+[data-theme='aurora'] .theme-fx::before {
+  top: -26vh; left: -14vw;
+  background: radial-gradient(circle, rgba(63, 224, 200, 0.38), transparent 68%);
+  animation: aurora-a 34s ease-in-out infinite;
+}
+[data-theme='aurora'] .theme-fx::after {
+  top: -18vh; right: -18vw;
+  background: radial-gradient(circle, rgba(75, 140, 255, 0.34), transparent 68%);
+  animation: aurora-b 42s ease-in-out infinite;
+}
+@keyframes aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(16vw, 10vh, 0) scale(1.18); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+  50%      { transform: translate3d(-14vw, 14vh, 0) scale(0.92); }
+}
+
+/* ---------- 4. Ember (animated) — warm coals ---------- */
+[data-theme='ember'] {
+  --bg: #120a07;
+  --bg-deep: #0a0403;
+  --rail: rgba(38, 22, 16, 0.62);
+  --stage: rgba(38, 22, 16, 0.38);
+  --modal: rgba(32, 19, 14, 0.98);
+  --accent: #ff8a4c;
+  --accent-2: #ff4d6d;
+  --on-accent: #1a0803;
+  --warn: #ffc46b;
+  --art-glow: 0.65;
+}
+[data-theme='ember'] .theme-fx::before,
+[data-theme='ember'] .theme-fx::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  will-change: transform, opacity;
+}
+[data-theme='ember'] .theme-fx::before {
+  bottom: -32vh; left: 50%; margin-left: -45vw;
+  width: 90vw; height: 62vh;
+  background: radial-gradient(circle, rgba(255, 122, 60, 0.36), transparent 70%);
+  animation: ember-glow 12s ease-in-out infinite;
+}
+[data-theme='ember'] .theme-fx::after {
+  top: -22vh; right: -12vw;
+  width: 56vw; height: 48vh;
+  background: radial-gradient(circle, rgba(255, 77, 109, 0.24), transparent 70%);
+  animation: ember-drift 30s ease-in-out infinite;
+}
+@keyframes ember-glow {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.1); opacity: 1; }
+}
+@keyframes ember-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(-10vw, 8vh, 0); }
+}
+
+/* ---------- 5. Mono — no colour at all, maximum focus ---------- */
+[data-theme='mono'] {
+  --bg: #0b0b0b;
+  --bg-deep: #000;
+  --rail: rgba(23, 23, 23, 0.72);
+  --stage: rgba(23, 23, 23, 0.45);
+  --modal: rgba(22, 22, 22, 0.98);
+  --panel: rgba(255, 255, 255, 0.05);
+  --panel-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #ffffff;
+  --accent-2: #b9b9b9;
+  --on-accent: #000000;
+  --ok: #e6e6e6;
+  --art-glow: 0;
+}
+/* the ambient artwork wash would reintroduce colour — drain it */
+[data-theme='mono'] .bg-art { filter: blur(90px) saturate(0) brightness(0.38); }
+
+/* ---------- 6. Synthwave (animated) — neon grid horizon ---------- */
+[data-theme='synthwave'] {
+  --bg: #0c0620;
+  --bg-deep: #060213;
+  --rail: rgba(25, 14, 54, 0.64);
+  --stage: rgba(25, 14, 54, 0.40);
+  --modal: rgba(22, 12, 48, 0.98);
+  --accent: #ff4ecd;
+  --accent-2: #00e5ff;
+  --on-accent: #14002a;
+  --ok: #00e5ff;
+  --err: #ff5c8a;
+  --art-glow: 0.85;
+}
+[data-theme='synthwave'] .theme-fx {
+  perspective: 260px;
+  perspective-origin: 50% 0%;
+}
+/* sun glow on the horizon */
+[data-theme='synthwave'] .theme-fx::before {
+  content: '';
+  position: absolute; left: 50%; bottom: 26vh;
+  width: 60vw; height: 40vh; margin-left: -30vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 78, 205, 0.30), transparent 65%);
+  filter: blur(70px);
+  animation: sw-pulse 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+/* the scrolling grid floor */
+[data-theme='synthwave'] .theme-fx::after {
+  content: '';
+  position: absolute; left: -50%; right: -50%; bottom: -60vh;
+  height: 120vh;
+  background:
+    repeating-linear-gradient(to right, rgba(0, 229, 255, 0.16) 0 1px, transparent 1px 7%),
+    repeating-linear-gradient(to bottom, rgba(255, 78, 205, 0.18) 0 1px, transparent 1px 40px);
+  transform: rotateX(72deg) translateZ(0);
+  transform-origin: 50% 0%;
+  animation: sw-scroll 2.6s linear infinite;
+  will-change: transform;
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+@keyframes sw-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+@keyframes sw-scroll {
+  from { transform: rotateX(72deg) translate3d(0, 0, 0); }
+  to   { transform: rotateX(72deg) translate3d(0, 40px, 0); }
+}
+
+/* ---------- animated previews in the theme picker ----------
+   Miniature versions of the real effects so the card shows what you get. */
+.theme-prev-fx { position: absolute; inset: 0; pointer-events: none; }
+
+.fx-aurora::before, .fx-aurora::after {
+  content: ''; position: absolute; width: 70%; height: 130%; border-radius: 50%; filter: blur(16px);
+}
+.fx-aurora::before {
+  top: -50%; left: -14%;
+  background: radial-gradient(circle, rgba(63, 224, 200, 0.55), transparent 68%);
+  animation: prev-a 9s ease-in-out infinite;
+}
+.fx-aurora::after {
+  top: -46%; right: -18%;
+  background: radial-gradient(circle, rgba(75, 140, 255, 0.5), transparent 68%);
+  animation: prev-b 11s ease-in-out infinite;
+}
+@keyframes prev-a { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(26%, 12%, 0); } }
+@keyframes prev-b { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(-22%, 16%, 0); } }
+
+.fx-ember::before {
+  content: ''; position: absolute; left: 50%; bottom: -60%;
+  width: 120%; height: 120%; margin-left: -60%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 122, 60, 0.6), transparent 68%);
+  filter: blur(15px);
+  animation: prev-pulse 4.5s ease-in-out infinite;
+}
+@keyframes prev-pulse { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.14); opacity: 1; } }
+
+.fx-synthwave::before {
+  content: ''; position: absolute; left: 50%; bottom: 34%;
+  width: 62%; height: 62%; margin-left: -31%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 78, 205, 0.6), transparent 62%);
+  filter: blur(12px);
+  animation: prev-pulse 5s ease-in-out infinite;
+}
+.fx-synthwave::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46%;
+  background:
+    repeating-linear-gradient(to right, rgba(0, 229, 255, 0.35) 0 1px, transparent 1px 12%),
+    repeating-linear-gradient(to bottom, rgba(255, 78, 205, 0.4) 0 1px, transparent 1px 9px);
+  animation: prev-scroll 1.6s linear infinite;
+}
+@keyframes prev-scroll { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, 9px, 0); } }
+
+/* ---------- shared FX layer ---------- */
+.theme-fx {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Respect the OS setting — and keep the look, just stop the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .theme-fx::before, .theme-fx::after,
+  .theme-prev-fx::before, .theme-prev-fx::after { animation: none !important; }
+}

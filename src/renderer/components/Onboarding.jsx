@@ -10,7 +10,9 @@ import { useApp } from '../state/store'
 const SPOTIFY_REDIRECT = 'http://127.0.0.1:8888'
 const TWITCH_REDIRECT = 'http://localhost:43111'
 
-function Copy({ value }) {
+// Copies without showing the string — the label above it says what it is, so
+// there's nothing to mistype or misread.
+function Copy({ value, label = 'the redirect URI' }) {
   const [done, setDone] = useState(false)
   return (
     <button
@@ -20,9 +22,9 @@ function Copy({ value }) {
         setDone(true)
         setTimeout(() => setDone(false), 1600)
       }}
-      title="Copy"
+      title="Copy to clipboard"
     >
-      <code>{value}</code>
+      {label}
       <span>{done ? '✓ copied' : 'copy'}</span>
     </button>
   )
@@ -264,7 +266,7 @@ export default function Onboarding() {
             Open the <button className="link" onClick={() => window.songseek.openExternal('https://developer.spotify.com/dashboard')}>Spotify Developer Dashboard</button> and click <b>Create app</b> (log in with your normal Spotify account).
           </li>
           <li>Name it anything — <b>SongSeek</b> works.</li>
-          <li>In <b>Redirect URIs</b>, paste exactly this: <Copy value={SPOTIFY_REDIRECT} /></li>
+          <li>In <b>Redirect URIs</b>, paste the SongSeek redirect URI: <Copy value={SPOTIFY_REDIRECT} label="Redirect URI" /></li>
           <li>Tick <b>Web API</b>, agree to the terms, and hit <b>Save</b>.</li>
         </ol>
       ),
@@ -309,7 +311,7 @@ export default function Onboarding() {
             Open the <button className="link" onClick={() => window.songseek.openExternal('https://dev.twitch.tv/console/apps')}>Twitch Developer Console</button> → <b>Register Your Application</b>. (Twitch requires 2FA on your account first.)
           </li>
           <li>Name it anything unique, e.g. <b>SongSeek — yourname</b>.</li>
-          <li>OAuth Redirect URL: <Copy value={TWITCH_REDIRECT} /></li>
+          <li>Paste the SongSeek redirect URL: <Copy value={TWITCH_REDIRECT} label="OAuth Redirect URL" /></li>
           <li>Category <b>Application Integration</b>, Client Type <b>Public</b>, then <b>Create</b>.</li>
         </ol>
       ),

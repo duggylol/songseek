@@ -9,6 +9,7 @@ const DEFAULTS = {
   spotifySearchClientSecret: '',
   twitchClientId: '',
   rewardName: 'Song Request',
+  theme: 'midnight',
   allowSpotify: true,
   allowYoutube: true,
   allowSoundcloud: true,

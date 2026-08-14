@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  /* Defaults so the window is always correctly branded, even if the accent
+     never gets pushed in from the main process. */
+  :root { --accent: #8b7bff; --accent-2: #6f5cff; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    display: grid; place-items: center;
+  }
+
+  .card {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 26px 30px;
+    background: linear-gradient(160deg, #14141f, #0a0a0f);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    -webkit-app-region: drag;
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { color: var(--accent); }
+  .brand span { font-size: 17px; font-weight: 750; letter-spacing: 0.2px; color: #f4f4f8; }
+
+  .status {
+    font-size: 12.5px; color: rgba(244, 244, 248, 0.62);
+    min-height: 17px; text-align: center;
+    max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .bar {
+    position: relative; width: 100%; height: 4px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10); overflow: hidden;
+  }
+  .fill {
+    position: absolute; inset: 0 auto 0 0;
+    width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 0.25s ease;
+  }
+  /* Indeterminate sweep while we're waiting on GitHub. */
+  .bar.busy .fill {
+    width: 34%; transition: none;
+    animation: sweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes sweep {
+    0%   { transform: translateX(-110%); }
+    100% { transform: translateX(320%); }
+  }
+
+  .ver { font-size: 10.5px; color: rgba(244, 244, 248, 0.28); letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6" opacity=".5" />
+        <path d="M9 15.5V8l7-1.6v7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="7.6" cy="15.6" r="1.7" fill="currentColor" />
+        <circle cx="14.6" cy="13.9" r="1.7" fill="currentColor" />
+      </svg>
+      <span>SongSeek</span>
+    </div>
+    <div class="status" id="status">Starting…</div>
+    <div class="bar busy" id="bar"><div class="fill" id="fill"></div></div>
+    <div class="ver" id="ver"></div>
+  </div>
+
+<script>
+  // Called from the main process. percent === null means "indeterminate".
+  window.__set = function (text, percent) {
+    document.getElementById('status').textContent = text
+    var bar = document.getElementById('bar')
+    var fill = document.getElementById('fill')
+    if (percent === null || percent === undefined) {
+      bar.classList.add('busy')
+      fill.style.width = '34%'
+    } else {
+      bar.classList.remove('busy')
+      fill.style.width = Math.max(0, Math.min(100, percent)) + '%'
+    }
+  }
+  window.__setVersion = function (v) { document.getElementById('ver').textContent = v }
+  window.__setAccent = function (a, b) {
+    document.documentElement.style.setProperty('--accent', a)
+    document.documentElement.style.setProperty('--accent-2', b)
+  }
+</script>
+</body>
+</html>

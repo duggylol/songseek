@@ -9,6 +9,7 @@ const { SpotifyControl } = require('./spotifyControl')
 const twitchAuth = require('./twitchAuth')
 const TwitchService = require('./twitch')
 const overlay = require('./overlay')
+const { runBootUpdate } = require('./bootUpdater')
 const search = require('./searchProxy')
 
 let store = null
@@ -18,8 +19,16 @@ let control = null
 let twitchConnecting = false
 
 const send = (channel, payload) => {
-  if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) {
+    win.webContents.send(channel, payload)
+  }
 }
+
+// True from launch until the main window exists. The boot updater shows a
+// splash and then closes it, and for that instant there are zero windows open —
+// without this guard `window-all-closed` fires and quits the app before it ever
+// opens, which is precisely the "no update available" path every user hits.
+let booting = true
 
 const spotifyStatus = (extra = {}) => ({
   ...account.status(store),
@@ -336,6 +345,23 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     store = new Store()
     registerIpc()
+
+    // Update before the app opens: if a newer build exists it's downloaded and
+    // installed now, and the installer relaunches into it — so nobody runs a
+    // stale version just because they never fully quit. This call is built to
+    // always come back (timeouts on every path); if it can't update, it simply
+    // continues into the app below.
+    try {
+      const r = await runBootUpdate({
+        log: updateLog,
+        theme: store.get('theme') || 'midnight',
+        demo: process.env.SONGSEEK_SPLASH_DEMO === '1',
+      })
+      updateLog(`boot update result: ${r.reason}`)
+    } catch (e) {
+      updateLog('boot update threw, continuing: ' + ((e && e.message) || e))
+    }
+
     try {
       await createWindow()
       startTwitchService()
@@ -343,6 +369,9 @@ if (!gotLock) {
       if (store.get('spotifyLibraryTokens')) initSpotifyControl()
     } catch (e) {
       console.error('[startup]', e)
+    } finally {
+      // The main window exists (or failed to) — closing windows means quit again.
+      booting = false
     }
     // Always last and outside the try: updates must run even if something above
     // failed, so a broken build can still repair itself.
@@ -361,7 +390,10 @@ if (!gotLock) {
     try { overlay.closeAll() } catch {}
     try { if (rendererServer) rendererServer.close() } catch {}
   })
-  app.on('window-all-closed', () => app.quit())
+  app.on('window-all-closed', () => {
+    if (booting) return
+    app.quit()
+  })
 }
 
 // ---- auto-update (GitHub Releases) ----
