@@ -25,6 +25,7 @@ export const useApp = create((set) => ({
   spotify: { ...emptySpotify },
   library: { connected: false, playlists: [], loading: false, activeId: null },
   twitch: { connected: false, user: null, deviceCode: null, error: null },
+  kick: { connected: false, user: null, error: null },
   toasts: [],
   settingsOpen: false,
 
@@ -43,6 +44,7 @@ export const useApp = create((set) => ({
   setSpotify: (p) => set((s) => ({ spotify: { ...s.spotify, ...p } })),
   setLibrary: (p) => set((s) => ({ library: { ...s.library, ...p } })),
   setTwitch: (p) => set((s) => ({ twitch: { ...s.twitch, ...p } })),
+  setKick: (p) => set((s) => ({ kick: { ...s.kick, ...p } })),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   toast: (text, kind = 'info') => {

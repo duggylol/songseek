@@ -22,6 +22,7 @@ const DEFAULTS = {
   spotifyUser: null,
   twitchTokens: null,
   twitchUser: null,
+  kickUser: null, // { slug, id, chatroomId, username } — no tokens on the local path
   queue: [],
 }
 

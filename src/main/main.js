@@ -8,6 +8,8 @@ const spotifySearch = require('./spotifySearch')
 const { SpotifyControl } = require('./spotifyControl')
 const twitchAuth = require('./twitchAuth')
 const TwitchService = require('./twitch')
+const kickAuth = require('./kickAuth')
+const KickService = require('./kick')
 const overlay = require('./overlay')
 const { runBootUpdate } = require('./bootUpdater')
 const search = require('./searchProxy')
@@ -15,6 +17,7 @@ const search = require('./searchProxy')
 let store = null
 let win = null
 let twitch = null
+let kick = null
 let control = null
 let twitchConnecting = false
 
@@ -58,6 +61,23 @@ function startTwitchService() {
   twitch.on('command', (payload) => send('twitch:command', payload))
   twitch.on('status', (s) => send('twitch:status', twitchStatus(s)))
   twitch.start()
+}
+
+const kickStatus = (extra = {}) => ({
+  connected: !!(kick && !kick.stopped && store.get('kickUser')),
+  user: store.get('kickUser'),
+  ...extra,
+})
+
+function startKickService() {
+  if (kick) kick.stop()
+  if (!store.get('kickUser')) return
+  kick = new KickService({ store })
+  // Same events as Twitch, so requests/commands flow into the same handlers.
+  kick.on('request', (payload) => send('kick:request', payload))
+  kick.on('command', (payload) => send('kick:command', payload))
+  kick.on('status', (s) => send('kick:status', kickStatus(s)))
+  kick.start()
 }
 
 async function createWindow() {
@@ -242,6 +262,21 @@ function registerIpc() {
   ipcMain.handle('twitch:status', () => twitchStatus())
   ipcMain.handle('twitch:say', (_e, text) => (twitch ? twitch.say(text) : false))
 
+  ipcMain.handle('kick:connect', async (_e, channel) => {
+    await kickAuth.connect(store, channel)
+    startKickService()
+    return kickStatus()
+  })
+  ipcMain.handle('kick:disconnect', () => {
+    if (kick) kick.stop()
+    kick = null
+    kickAuth.disconnect(store)
+    send('kick:status', kickStatus())
+    return kickStatus()
+  })
+  ipcMain.handle('kick:status', () => kickStatus())
+  ipcMain.handle('kick:say', (_e, text) => (kick ? kick.say(text) : false))
+
   ipcMain.handle('library:status', () => account.status(store))
   ipcMain.handle('library:playlists', () => account.playlists(store))
   ipcMain.handle('library:tracks', (_e, id) => account.playlistTracks(store, id))
@@ -365,6 +400,7 @@ if (!gotLock) {
     try {
       await createWindow()
       startTwitchService()
+      startKickService()
       // Start watching the user's Spotify playback if already connected.
       if (store.get('spotifyLibraryTokens')) initSpotifyControl()
     } catch (e) {
@@ -384,6 +420,7 @@ if (!gotLock) {
     // already the new version. Preventing the quit to call quitAndInstall
     // ourselves was unreliable — if it no-op'd, the app just never closed.
     if (control) control.stop()
+    try { if (kick) kick.stop() } catch {}
     // Free 43112 promptly so a quick relaunch gets it back instead of sliding
     // to a fallback port and orphaning the user's OBS source. Overlay streams
     // have to be dropped first or close() sits waiting on them.

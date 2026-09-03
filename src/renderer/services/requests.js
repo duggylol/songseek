@@ -53,9 +53,17 @@ export async function resolveRequest(text) {
   return { track: null }
 }
 
+// Post to every connected platform's chat. Twitch can post; the Kick local
+// path can't (no auth) and simply returns false, so a Kick-only stream still
+// works — it just won't echo confirmations back into chat.
+function sayAll(text) {
+  try { window.songseek.twitch.say(text) } catch {}
+  try { window.songseek.kick.say(text) } catch {}
+}
+
 function announce(text) {
   const s = useApp.getState()
-  if (s.settings && s.settings.chatAnnounce) window.songseek.twitch.say(text)
+  if (s.settings && s.settings.chatAnnounce) sayAll(text)
 }
 
 // Entry point for Twitch redemptions / chat commands / the "simulate" box.
@@ -158,7 +166,7 @@ export function handleChatCommand({ cmd, user }) {
     }
     case 'song': {
       // A viewer asked — always answer, regardless of the announce setting.
-      window.songseek.twitch.say(
+      sayAll(
         cur
           ? `Now playing: ${cur.title} — ${cur.artist}${cur.requestedBy ? ` (requested by ${cur.requestedBy})` : ''}`
           : 'Nothing is playing right now.'

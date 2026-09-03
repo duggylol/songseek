@@ -111,9 +111,24 @@ const TABS = [
 /* ---------------- panels ---------------- */
 
 function ConnectionsPanel({ ctx }) {
-  const { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, toast } = ctx
+  const { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, kick, setKick, toast } = ctx
   const [busy, setBusy] = useState('')
   const [diag, setDiag] = useState('')
+  const [kickChannel, setKickChannel] = useState('')
+
+  const connectKick = async () => {
+    const ch = kickChannel.trim()
+    if (!ch) return
+    setBusy('kick')
+    try {
+      const st = await window.songseek.kick.connect(ch)
+      setKick({ connected: true, user: st, error: null })
+      toast(`Kick connected to ${st.username || st.slug}`, 'success')
+    } catch (e) {
+      toast(e.message.replace(/^Error invoking .*?: /, ''), 'error')
+    }
+    setBusy('')
+  }
 
   const connectSpotify = async () => {
     setBusy('spotify')
@@ -254,6 +269,49 @@ function ConnectionsPanel({ ctx }) {
             </Row>
           </details>
         )}
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <span className="dot-lg" style={{ background: '#53fc18' }} />
+          <span className="card-title">Kick</span>
+          <span className={`badge ${kick.connected ? 'ok' : 'off'}`}>
+            {kick.connected ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+        <p className="card-note">
+          {kick.connected
+            ? `Listening to ${kick.user ? (kick.user.username || kick.user.slug) : 'your channel'}'s chat.`
+            : 'Just enter your channel name — no login needed. The chat command and mod commands work like Twitch.'}
+        </p>
+        {kick.connected ? (
+          <div className="card-actions">
+            <button className="btn subtle" onClick={() => window.songseek.kick.disconnect().then((s) => setKick(s))}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="card-actions">
+            <div className="row-control" style={{ flex: 1 }}>
+              <input
+                type="text"
+                placeholder="your Kick channel name"
+                value={kickChannel}
+                style={{ width: 200 }}
+                onChange={(e) => setKickChannel(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && connectKick()}
+              />
+            </div>
+            <button className="btn" disabled={busy === 'kick' || !kickChannel.trim()} onClick={connectKick}>
+              {busy === 'kick' ? 'Connecting…' : 'Connect Kick'}
+            </button>
+          </div>
+        )}
+        {kick.error && <p className="card-note status err">{kick.error}</p>}
+        <p className="card-note" style={{ opacity: 0.7 }}>
+          Kick has no channel-point rewards here, and chat confirmations aren't posted back (Kick needs a login
+          to post). Requests via the chat command work fully.
+        </p>
       </div>
     </>
   )
@@ -465,19 +523,22 @@ export default function SettingsModal() {
   const patchSettings = useApp((s) => s.patchSettings)
   const spotify = useApp((s) => s.spotify)
   const twitch = useApp((s) => s.twitch)
+  const kick = useApp((s) => s.kick)
   const setSettingsOpen = useApp((s) => s.setSettingsOpen)
   const setSpotify = useApp((s) => s.setSpotify)
   const setTwitch = useApp((s) => s.setTwitch)
+  const setKick = useApp((s) => s.setKick)
   const toast = useApp((s) => s.toast)
   const [tab, setTab] = useState('connections')
 
   // A dot on the tab that actually needs attention, so nothing has to be
-  // explained in prose.
+  // explained in prose. Chat platforms are optional (connect either or both),
+  // so only flag Spotify, which playback genuinely needs.
   const needsAttention = {
-    connections: !spotify.connected || spotify.needsReconnect || !twitch.connected,
+    connections: !spotify.connected || spotify.needsReconnect,
   }
 
-  const ctx = { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, toast, setSettingsOpen }
+  const ctx = { settings, patchSettings, spotify, setSpotify, twitch, setTwitch, kick, setKick, toast, setSettingsOpen }
   const Panel = PANELS[tab]
 
   return (

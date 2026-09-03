@@ -42,6 +42,15 @@ contextBridge.exposeInMainWorld('songseek', {
     onRequest: listen('twitch:request'),
     onCommand: listen('twitch:command'),
   },
+  kick: {
+    connect: (channel) => ipcRenderer.invoke('kick:connect', channel),
+    disconnect: () => ipcRenderer.invoke('kick:disconnect'),
+    status: () => ipcRenderer.invoke('kick:status'),
+    say: (text) => ipcRenderer.invoke('kick:say', text),
+    onStatus: listen('kick:status'),
+    onRequest: listen('kick:request'),
+    onCommand: listen('kick:command'),
+  },
   appInfo: () => ipcRenderer.invoke('app:info'),
   update: {
     state: () => ipcRenderer.invoke('update:state'),

@@ -15,6 +15,7 @@ function StatusPill({ label, ok, onClick }) {
 export default function TitleBar() {
   const spotify = useApp((s) => s.spotify)
   const twitch = useApp((s) => s.twitch)
+  const kick = useApp((s) => s.kick)
   const setSettingsOpen = useApp((s) => s.setSettingsOpen)
 
   return (
@@ -35,6 +36,7 @@ export default function TitleBar() {
           onClick={() => setSettingsOpen(true)}
         />
         <StatusPill label="Twitch" ok={twitch.connected} onClick={() => setSettingsOpen(true)} />
+        <StatusPill label="Kick" ok={kick.connected} onClick={() => setSettingsOpen(true)} />
         <button className="icon-btn no-drag" onClick={() => setSettingsOpen(true)} title="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <circle cx="12" cy="12" r="3" />

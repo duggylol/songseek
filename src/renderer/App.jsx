@@ -71,6 +71,8 @@ export default function App() {
       st.setSpotify(sp)
       const tw = await window.songseek.twitch.status()
       st.setTwitch(tw)
+      const kk = await window.songseek.kick.status()
+      st.setKick(kk)
       st.setLibrary({ connected: sp.connected })
       if (sp.connected && !sp.needsReconnect) loadPlaylists()
 
@@ -80,6 +82,13 @@ export default function App() {
         window.songseek.twitch.onRequest(handleIncomingRequest),
         window.songseek.twitch.onCommand(handleChatCommand),
         window.songseek.twitch.onStatus((s) => st.setTwitch(s)),
+        // Kick uses the exact same request/command handlers as Twitch.
+        window.songseek.kick.onRequest(handleIncomingRequest),
+        window.songseek.kick.onCommand(handleChatCommand),
+        window.songseek.kick.onStatus((s) => {
+          st.setKick(s)
+          if (s.error) st.toast(s.error, 'error')
+        }),
         window.songseek.onUpdateReady(({ version }) =>
           st.toast(`Update ${version} ready — it installs next time you open SongSeek`, 'success')
         ),
